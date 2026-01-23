@@ -218,6 +218,41 @@ export function createGitAPI(repoPath) {
       if (file) {
         validateFilePaths(file);
       }
+
+      // Check if file is untracked
+      if (file && !staged) {
+        const status = await git.status();
+        if (status.not_added.includes(file)) {
+          // For untracked files, show content as all additions
+          try {
+            const content = await git.show([`:${file}`]).catch(() => {
+              // File not in index, read from working directory
+              return git.raw(['show', `:0:${file}`]).catch(async () => {
+                // Read file directly from filesystem
+                const { readFile } = await import('fs/promises');
+                const { join } = await import('path');
+                const filePath = join(repoPath, file);
+                return await readFile(filePath, 'utf8');
+              });
+            });
+
+            // Format as diff with all lines as additions
+            const lines = content.split('\n');
+            let diff = `diff --git a/${file} b/${file}\n`;
+            diff += `new file mode 100644\n`;
+            diff += `--- /dev/null\n`;
+            diff += `+++ b/${file}\n`;
+            diff += `@@ -0,0 +1,${lines.length} @@\n`;
+            diff += lines.map(line => `+${line}`).join('\n');
+
+            return diff;
+          } catch (error) {
+            // If we can't read the file, fall back to normal diff
+            console.error('Error reading untracked file:', error);
+          }
+        }
+      }
+
       const args = staged ? ['--cached'] : [];
       if (file) {
         args.push('--', file);
