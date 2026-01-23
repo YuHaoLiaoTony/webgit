@@ -190,6 +190,8 @@
       cursor: pointer;
       transition: all var(--transition);
       border: 1px solid var(--border);
+      flex-shrink: 1;
+      max-width: 60%;
     }
 
     .branch-selector:hover {
@@ -204,7 +206,6 @@
     .branch-name {
       font-weight: 500;
       font-size: 13px;
-      max-width: 140px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
