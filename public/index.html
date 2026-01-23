@@ -1177,6 +1177,13 @@
       display: none;
     }
 
+    /* Mobile Styles */
+    @media (max-width: 767px) {
+      .logo-text {
+        display: none;
+      }
+    }
+
     /* Desktop Styles */
     @media (min-width: 768px) {
       .menu-toggle {
@@ -1290,7 +1297,7 @@
             <path d="M12 3v6m0 6v6"/>
           </svg>
         </div>
-        <span>WebGit</span>
+        <span class="logo-text">WebGit</span>
       </div>
 
       <div class="branch-selector" id="branchSelector">
