@@ -293,8 +293,55 @@ export function createGitAPI(repoPath) {
     async discardChanges(files) {
       if (files && files.length > 0) {
         validateFilePaths(files);
-        await git.checkout(['--', ...files]);
+
+        // Get current status to check for untracked files
+        const status = await git.status();
+        const fileArray = Array.isArray(files) ? files : [files];
+
+        const untrackedFiles = [];
+        const trackedFiles = [];
+
+        for (const file of fileArray) {
+          if (status.not_added.includes(file)) {
+            untrackedFiles.push(file);
+          } else {
+            trackedFiles.push(file);
+          }
+        }
+
+        // Delete untracked files from filesystem
+        if (untrackedFiles.length > 0) {
+          const { unlink } = await import('fs/promises');
+          const { join } = await import('path');
+
+          for (const file of untrackedFiles) {
+            const filePath = join(repoPath, file);
+            await unlink(filePath);
+          }
+        }
+
+        // Discard changes for tracked files
+        if (trackedFiles.length > 0) {
+          await git.checkout(['--', ...trackedFiles]);
+        }
       } else {
+        // Discard all: remove untracked files and checkout tracked files
+        const status = await git.status();
+
+        if (status.not_added.length > 0) {
+          const { unlink } = await import('fs/promises');
+          const { join } = await import('path');
+
+          for (const file of status.not_added) {
+            try {
+              const filePath = join(repoPath, file);
+              await unlink(filePath);
+            } catch (e) {
+              // File might not exist or be inaccessible
+            }
+          }
+        }
+
         await git.checkout(['--', '.']);
       }
       return { success: true };
