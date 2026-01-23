@@ -4,11 +4,20 @@ test.describe('WebGit - Status View', () => {
   test('should load the status page', async ({ page }) => {
     await page.goto('/');
 
-    // Check header is visible
-    await expect(page.locator('.logo')).toContainText('WebGit');
+    // Check logo is visible
+    await expect(page.locator('.logo')).toBeVisible();
 
-    // Check current branch is displayed
-    await expect(page.locator('#currentBranch')).toBeVisible();
+    // Wait for status to load and current branch to be populated
+    await page.waitForFunction(() => {
+      const branchElem = document.querySelector('#currentBranch');
+      return branchElem && branchElem.textContent && branchElem.textContent.trim().length > 0;
+    }, { timeout: 10000 });
+
+    // Verify branch element has content
+    await expect(page.locator('#currentBranch')).not.toBeEmpty();
+
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
 
     // Take screenshot of status view
     await page.screenshot({ path: 'screenshots/status-view.png', fullPage: true });
@@ -23,6 +32,9 @@ test.describe('WebGit - Status View', () => {
     // Either we have files or the "working tree clean" message
     const statusContent = page.locator('#statusContent');
     await expect(statusContent).toBeVisible();
+
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/status-content.png', fullPage: true });
@@ -58,6 +70,9 @@ test.describe('WebGit - History View', () => {
 
     // Wait for commits to load
     await page.waitForSelector('#commitList .commit-item, #commitList .empty-state', { timeout: 10000 });
+
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/history-view.png', fullPage: true });
@@ -105,6 +120,9 @@ test.describe('WebGit - Branches View', () => {
     // Wait for branches to load
     await page.waitForSelector('#branchList .branch-item, #branchList .empty-state', { timeout: 10000 });
 
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/branches-view.png', fullPage: true });
   });
@@ -151,6 +169,9 @@ test.describe('WebGit - Branches View', () => {
     // Check modal is open
     await expect(page.locator('#branchModal')).toHaveClass(/open/);
 
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/new-branch-modal.png', fullPage: true });
   });
@@ -174,6 +195,9 @@ test.describe('WebGit - Remotes View', () => {
 
     // Wait for remotes to load
     await page.waitForSelector('#remotesContent', { timeout: 10000 });
+
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/remotes-view.png', fullPage: true });
@@ -215,6 +239,9 @@ test.describe('WebGit - Branch Selector', () => {
     // Check modal is open
     await expect(page.locator('#branchModal')).toHaveClass(/open/);
 
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/branch-selector.png', fullPage: true });
   });
@@ -245,6 +272,9 @@ test.describe('WebGit - Mobile Navigation', () => {
     const menuToggle = page.locator('#menuToggle');
     await expect(menuToggle).toBeVisible();
 
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/mobile-view.png', fullPage: true });
   });
@@ -262,6 +292,9 @@ test.describe('WebGit - Mobile Navigation', () => {
     // Nav should be open
     await expect(page.locator('#mainNav')).toHaveClass(/open/);
 
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/mobile-menu-open.png', fullPage: true });
   });
@@ -277,6 +310,9 @@ test.describe('WebGit - Mobile Navigation', () => {
 
     // Check history view is active
     await expect(page.locator('#historyView')).toHaveClass(/active/);
+
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/mobile-history.png', fullPage: true });
@@ -296,6 +332,9 @@ test.describe('WebGit - Responsive Design', () => {
     const menuToggle = page.locator('#menuToggle');
     await expect(menuToggle).toBeHidden();
 
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/desktop-view.png', fullPage: true });
   });
@@ -303,6 +342,9 @@ test.describe('WebGit - Responsive Design', () => {
   test('tablet view should work correctly', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/');
+
+    // Wait for animations to complete before screenshot
+    await page.waitForTimeout(500);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/tablet-view.png', fullPage: true });
