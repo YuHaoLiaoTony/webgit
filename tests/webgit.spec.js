@@ -19,6 +19,9 @@ test.describe('WebGit - Status View', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot of status view
     await page.screenshot({ path: 'screenshots/status-view.png', fullPage: true });
   });
@@ -35,6 +38,9 @@ test.describe('WebGit - Status View', () => {
 
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
+
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/status-content.png', fullPage: true });
@@ -73,6 +79,9 @@ test.describe('WebGit - History View', () => {
 
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
+
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/history-view.png', fullPage: true });
@@ -123,6 +132,9 @@ test.describe('WebGit - Branches View', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/branches-view.png', fullPage: true });
   });
@@ -172,6 +184,9 @@ test.describe('WebGit - Branches View', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/new-branch-modal.png', fullPage: true });
   });
@@ -198,6 +213,9 @@ test.describe('WebGit - Remotes View', () => {
 
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
+
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/remotes-view.png', fullPage: true });
@@ -242,6 +260,9 @@ test.describe('WebGit - Branch Selector', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/branch-selector.png', fullPage: true });
   });
@@ -275,6 +296,9 @@ test.describe('WebGit - Mobile Navigation', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/mobile-view.png', fullPage: true });
   });
@@ -295,6 +319,9 @@ test.describe('WebGit - Mobile Navigation', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/mobile-menu-open.png', fullPage: true });
   });
@@ -313,6 +340,9 @@ test.describe('WebGit - Mobile Navigation', () => {
 
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
+
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/mobile-history.png', fullPage: true });
@@ -335,6 +365,9 @@ test.describe('WebGit - Responsive Design', () => {
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
 
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
+
     // Take screenshot
     await page.screenshot({ path: 'screenshots/desktop-view.png', fullPage: true });
   });
@@ -345,6 +378,9 @@ test.describe('WebGit - Responsive Design', () => {
 
     // Wait for animations to complete before screenshot
     await page.waitForTimeout(500);
+
+    // Wait for fonts to load
+    await page.evaluate(() => document.fonts.ready);
 
     // Take screenshot
     await page.screenshot({ path: 'screenshots/tablet-view.png', fullPage: true });
