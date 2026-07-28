@@ -1,0 +1,33 @@
+/* ============================================
+   WebGit - Main Stylesheet Entry
+   Build: npx postcss src/style.css -o style.css
+   ============================================ */
+
+/* 1. Variables & Theme */
+@import "variables.css";
+
+/* 2. Base Styles */
+@import "base/reset.css";
+@import "base/animations.css";
+
+/* 3. Layout */
+@import "layout/header.css";
+@import "layout/navigation.css";
+@import "layout/main.css";
+
+/* 4. Components */
+@import "components/card.css";
+@import "components/button.css";
+@import "components/form.css";
+@import "components/file-list.css";
+@import "components/diff.css";
+@import "components/commit-history.css";
+@import "components/modal.css";
+@import "components/branch-list.css";
+@import "components/toast.css";
+@import "components/loading.css";
+@import "components/empty-state.css";
+@import "components/remote-panel.css";
+
+/* 5. Responsive Overrides */
+@import "responsive.css";

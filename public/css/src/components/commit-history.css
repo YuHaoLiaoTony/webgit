@@ -1,0 +1,78 @@
+/* Commit History */
+.commit-list {
+  list-style: none;
+}
+
+.commit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.commit-item:hover {
+  background: var(--bg-hover);
+}
+
+.commit-item:last-child {
+  border-bottom: none;
+}
+
+.commit-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.commit-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-active) 0%, var(--bg-surface) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.commit-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.commit-author {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.commit-date {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.commit-hash {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-muted);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.commit-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

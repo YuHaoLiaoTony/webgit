@@ -1,0 +1,110 @@
+/* Diff View */
+.diff-container {
+  background: var(--bg-base);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.diff-file-name {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.diff-content {
+  overflow-x: auto;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.diff-line {
+  display: flex;
+  min-width: max-content;
+}
+
+.diff-line-num {
+  padding: 0 14px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  user-select: none;
+  text-align: right;
+  min-width: 55px;
+  display: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.diff-line-content {
+  flex: 1;
+  padding: 0 16px;
+  white-space: pre;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.diff-line.add {
+  background: var(--diff-add-bg);
+}
+
+.diff-line.add .diff-line-content {
+  background: var(--diff-add-line);
+}
+
+.diff-line.del {
+  background: var(--diff-del-bg);
+}
+
+.diff-line.del .diff-line-content {
+  background: var(--diff-del-line);
+}
+
+.diff-line.hunk {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+/* Collapsible Diff */
+.diff-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.diff-toggle svg {
+  transition: transform var(--transition);
+}
+
+.diff-toggle.collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.file-diff {
+  margin-bottom: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.file-diff-content {
+  max-height: 400px;
+  overflow: auto;
+}
+
+.file-diff-content.collapsed {
+  display: none;
+}

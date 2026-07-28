@@ -1,0 +1,88 @@
+/* Mobile Styles */
+@media (max-width: 767px) {
+  .logo-text {
+    display: none;
+  }
+}
+
+/* Desktop Styles */
+@media (min-width: 768px) {
+  .menu-toggle {
+    display: none;
+  }
+
+  .nav {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 56px;
+    bottom: 0;
+    width: 200px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+
+  .nav-list {
+    padding: 16px 12px;
+  }
+
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-link {
+    padding: 11px 14px;
+  }
+
+  .main {
+    margin-left: 200px;
+    padding: 32px;
+  }
+
+  .diff-line-num {
+    display: block;
+  }
+
+  .modal {
+    border-radius: var(--radius-lg);
+    max-height: 70vh;
+    border: 1px solid var(--border);
+  }
+
+  .modal-overlay {
+    align-items: center;
+  }
+
+  .commit-item {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .commit-header {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .commit-message {
+    flex: 2;
+    text-align: left;
+  }
+}
+
+@media (min-width: 1024px) {
+  .main {
+    padding: 40px 48px;
+  }
+
+  .card-content {
+    padding: 24px;
+  }
+
+  .nav {
+    width: 220px;
+  }
+
+  .main {
+    margin-left: 220px;
+  }
+}

@@ -1,0 +1,39 @@
+/* Branch List */
+.branch-list {
+  list-style: none;
+}
+
+.branch-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+  margin-bottom: 4px;
+}
+
+.branch-item:hover {
+  background: var(--bg-hover);
+}
+
+.branch-item.current {
+  background: var(--accent-muted);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.branch-item-name {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.branch-item.current .branch-item-name {
+  color: var(--accent);
+}
+
+.branch-item-actions {
+  display: flex;
+  gap: 8px;
+}

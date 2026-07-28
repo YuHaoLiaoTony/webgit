@@ -1,0 +1,75 @@
+/* Commit Form */
+.commit-form {
+  padding: 20px;
+}
+
+.commit-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 14px 16px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+
+.commit-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.commit-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.commit-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.char-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 10px;
+}
+
+/* Input */
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.input-group {
+  margin-bottom: 18px;
+}
+
+.input-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}

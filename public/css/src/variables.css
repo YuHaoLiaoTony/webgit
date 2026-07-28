@@ -1,0 +1,73 @@
+:root {
+  --bg-base: #0a0a0b;
+  --bg-elevated: #111113;
+  --bg-surface: #18181b;
+  --bg-hover: #232326;
+  --bg-active: #2a2a2e;
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-muted: #52525b;
+
+  --accent: #10b981;
+  --accent-muted: rgba(16, 185, 129, 0.15);
+  --accent-hover: #059669;
+
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.03);
+
+  --diff-add-bg: rgba(34, 197, 94, 0.1);
+  --diff-add-line: rgba(34, 197, 94, 0.2);
+  --diff-del-bg: rgba(239, 68, 68, 0.1);
+  --diff-del-line: rgba(239, 68, 68, 0.2);
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+  --touch-target: 44px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light mode */
+[data-theme="light"] {
+  --bg-base: #f8f9fa;
+  --bg-elevated: #ffffff;
+  --bg-surface: #f1f3f4;
+  --bg-hover: #e8eaed;
+  --bg-active: #dadce0;
+
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+
+  --accent: #059669;
+  --accent-muted: rgba(5, 150, 105, 0.12);
+  --accent-hover: #047857;
+
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #dc2626;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+
+  --diff-add-bg: rgba(22, 163, 74, 0.08);
+  --diff-add-line: rgba(22, 163, 74, 0.15);
+  --diff-del-bg: rgba(220, 38, 38, 0.08);
+  --diff-del-line: rgba(220, 38, 38, 0.15);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
