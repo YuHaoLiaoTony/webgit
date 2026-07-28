@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>Fork - Git Client UI Mockup</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Window Title Bar -->
+  <div class="title-bar">
+    <div class="menu-items">
+      <span class="menu-item">File</span>
+      <span class="menu-item">View</span>
+      <span class="menu-item">Repository</span>
+      <span class="menu-item">Window</span>
+      <span class="menu-item">Help</span>
+    </div>
+    <div class="app-title">Fork</div>
+    <div class="window-controls">
+      <span>&#8210;</span>
+      <span>&#9633;</span>
+      <span>&#10005;</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">⚡</span>
+      <span class="toolbar-label">Quick Launch</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">⇣</span>
+      <span class="toolbar-label">Fetch</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">⬇</span>
+      <span class="toolbar-label">Pull</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">⬆</span>
+      <span class="toolbar-label">Push</span>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">📦</span>
+      <span class="toolbar-label">Stash</span>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div style="flex: 1; text-align: center;">
+      <div style="font-weight: bold; font-size: 13px;">TypeScript*</div>
+      <div style="font-size: 10px; color: #666;">🌿 master</div>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">+🌿</span>
+      <span class="toolbar-label">New Branch</span>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">↗</span>
+      <span class="toolbar-label">Open in</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">&gt;_</span>
+      <span class="toolbar-label">Console</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">🎨</span>
+      <span class="toolbar-label">Appearance</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">💼</span>
+      <span class="toolbar-label">Work</span>
+    </div>
+    <div class="toolbar-btn">
+      <span class="toolbar-icon">💬</span>
+      <span class="toolbar-label">Feedback</span>
+    </div>
+  </div>
+
+  <!-- Repository Tabs Bar -->
+  <div class="tabs-bar">
+    <div class="tab">
+      <span>Fork*</span>
+      <span style="font-size: 10px; color: #888;">⚙</span>
+    </div>
+    <div class="tab active">
+      <span>TypeScript*</span>
+    </div>
+    <div class="tab-inactive">react*</div>
+    <div class="tab-inactive">WpfOfficeTheme</div>
+    <div style="margin-left: auto; padding-right: 10px; font-weight: bold; cursor: pointer; color: #666;">+</div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    
+    <!-- Left Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span>TypeScript</span>
+        <span style="font-size: 10px;">⚙</span>
+      </div>
+      <div class="sidebar-item" id="sidebarChanges" onclick="switchSidebarMode('changes')">
+        <span>📝</span> Changes (11)
+      </div>
+      <div class="sidebar-item selected" id="sidebarCommits" onclick="switchSidebarMode('commits')">
+        <span>≡</span> All Commits
+      </div>
+      
+      <div class="sidebar-search">
+        <span>🔍</span>
+        <input type="text" placeholder="Filter">
+      </div>
+
+      <div class="sidebar-group-title">
+        <span>▾ Starred</span>
+      </div>
+      <div class="sidebar-item">
+        <span>✓ master</span>
+        <span style="margin-left: auto; color: #ffca28;">☆</span>
+      </div>
+
+      <div class="sidebar-group-title">
+        <span>▾ Branches</span>
+      </div>
+      <div class="sidebar-item">🌿 editor-support-for-links</div>
+      <div class="sidebar-item">🌿 improve-uncalled-func...</div>
+      <div class="sidebar-item" style="font-weight: bold;">✓ master</div>
+      <div class="sidebar-item">🌿 release-4.1</div>
+
+      <div class="sidebar-group-title">
+        <span>▸ Remotes</span>
+      </div>
+      <div class="sidebar-group-title">
+        <span>▸ Tags</span>
+      </div>
+      <div class="sidebar-group-title">
+        <span>Stashes</span>
+      </div>
+      <div class="sidebar-group-title">
+        <span>Submodules</span>
+      </div>
+    </div>
+
+    <!-- Vertical Splitter Bar for Sidebar -->
+    <div class="resizer-v" id="resizerV"></div>
+
+    <!-- Main Content Area -->
+    <div class="content-area">
+      
+      <!-- Upper: Working Directory Changes View (loaded dynamically from changes-view.html) -->
+      <div class="changes-view" id="changesView" style="display:none"></div>
+
+      <!-- Upper: Commit List Table -->
+      <div class="commit-list-container">
+        <table class="commit-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Graph</th>
+              <th>Subject</th>
+              <th style="width: 140px;">Author</th>
+              <th style="width: 80px;">Hash</th>
+              <th style="width: 130px;">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- Row 1 (Master Head) -->
+            <tr data-commit-id="1">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="14" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="5" fill="#f5a623" stroke="#fff" stroke-width="1.5" />
+                </svg>
+              </td>
+              <td>
+                <span class="badge-branch">✓ master</span>
+                <strong>Update package-lock.json</strong>
+              </td>
+              <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
+              <td style="font-family: monospace;">ee57040</td>
+              <td>27 Nov 2020 07:21</td>
+            </tr>
+
+            <!-- Row 2 -->
+            <tr data-commit-id="2">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>Fix getTypeFacts for pattern template literal types (#41693)</td>
+              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+              <td style="font-family: monospace;">411c6d0</td>
+              <td>26 Nov 2020 17:55</td>
+            </tr>
+
+            <!-- Row 3 -->
+            <tr data-commit-id="3">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>Update package-lock.json</td>
+              <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
+              <td style="font-family: monospace;">d616d8f</td>
+              <td>26 Nov 2020 07:21</td>
+            </tr>
+
+            <!-- Row 4 -->
+            <tr data-commit-id="4">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>Properly cache types for shared control flow nodes (#41665)</td>
+              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+              <td style="font-family: monospace;">ec1490f</td>
+              <td>26 Nov 2020 01:51</td>
+            </tr>
+
+            <!-- Row 5 (Branch commit - toggle point) -->
+            <tr data-commit-id="5">
+              <td class="graph-col graph-col-toggle" onclick="toggleBranch(this, 'fix41651-branch-body', 'fix41651-merge-line')">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <!-- Main Orange Line -->
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <!-- Branch Blue Curve out -->
+                  <path class="toggle-branch-line" d="M 25 14 Q 38 14 50 28" fill="none" stroke="#4a90e2" stroke-width="2.5" />
+                  <!-- Branch point with toggle ring + chevron -->
+                  <circle cx="25" cy="14" r="8" fill="#fff" />
+                  <circle class="toggle-part" cx="25" cy="14" r="7" fill="none" stroke="#f5a623" stroke-width="2.5" />
+                  <path class="toggle-part toggle-chevron" d="M 22 12 L 25 17 L 28 12" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </td>
+              <td>
+                <span class="badge-tag">origin/fix41651</span> Accept new baselines
+              </td>
+              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+              <td style="font-family: monospace;">5e2509b</td>
+              <td>25 Nov 2020 21:17</td>
+            </tr>
+
+            <!-- Row 6 (Branch Child 1 - collapsible child) -->
+            <tr data-commit-id="6" class="fix41651-branch-body">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <line x1="50" y1="0" x2="50" y2="28" stroke="#4a90e2" stroke-width="2.5" />
+                  <circle cx="50" cy="14" r="4" fill="#4a90e2" />
+                </svg>
+              </td>
+              <td style="padding-left: 20px;">Add tests</td>
+              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+              <td style="font-family: monospace;">24c6da9</td>
+              <td>25 Nov 2020 21:17</td>
+            </tr>
+
+            <!-- Row 6b (branch commit 2) -->
+            <tr data-commit-id="6b" class="fix41651-branch-body">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <line x1="50" y1="0" x2="50" y2="28" stroke="#4a90e2" stroke-width="2.5" />
+                  <circle cx="50" cy="14" r="4" fill="#4a90e2" />
+                </svg>
+              </td>
+              <td style="padding-left: 20px;">Update test snapshots</td>
+              <td><span class="author-tag author-sg">SG</span> Song Gao</td>
+              <td style="font-family: monospace;">f9e8d7c</td>
+              <td>25 Nov 2020 20:45</td>
+            </tr>
+
+            <!-- Row 7 (Merge back) -->
+            <tr data-commit-id="7">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <path class="fix41651-merge-line" d="M 50 0 Q 38 14 25 14" fill="none" stroke="#4a90e2" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>
+                Normalize `${string}` to just string, fix getTypeFacts
+              </td>
+              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+              <td style="font-family: monospace;">3c3fbbd</td>
+              <td>25 Nov 2020 18:49</td>
+            </tr>
+
+            <!-- Row 8 -->
+            <tr data-commit-id="8">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>replace whole path if directory separator appears for import completion. (#41412)</td>
+              <td><span class="author-tag author-sg">SG</span> Song Gao</td>
+              <td style="font-family: monospace;">d5779c7</td>
+              <td>25 Nov 2020 18:37</td>
+            </tr>
+
+            <!-- Row 9 -->
+            <tr data-commit-id="9">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>fix(41216): update baseline (#41687)</td>
+              <td><span class="author-tag author-ot">OT</span> Oleksandr T</td>
+              <td style="font-family: monospace;">242e020</td>
+              <td>25 Nov 2020 18:11</td>
+            </tr>
+
+            <!-- Row 10 -->
+            <tr data-commit-id="10">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>Remove obsolete go-to-definition code after CommonJS alias changes (#41522)</td>
+              <td><span class="author-tag author-ab">AB</span> Andrew Branch</td>
+              <td style="font-family: monospace;">3fa30f4</td>
+              <td>25 Nov 2020 18:01</td>
+            </tr>
+
+            <!-- Row 11 (Merge PR - toggle point) -->
+            <tr data-commit-id="11" class="selected">
+              <td class="graph-col graph-col-toggle" onclick="toggleBranch(this, 'lego-branch-body', 'lego-branch-line')">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <path class="toggle-branch-line" d="M 25 14 Q 38 14 50 28" fill="none" stroke="#e056fd" stroke-width="2.5" />
+                  <!-- Larger merge node with toggle ring -->
+                  <circle cx="25" cy="14" r="8" fill="#fff" />
+                  <circle class="toggle-part" cx="25" cy="14" r="7" fill="none" stroke="#f5a623" stroke-width="2.5" />
+                  <path class="toggle-part toggle-chevron" d="M 22 12 L 25 17 L 28 12" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </td>
+              <td><strong>LEGO: Merge pull request 41678</strong></td>
+              <td><span class="author-tag author-cs">cs</span> csigs</td>
+              <td style="font-family: monospace;">86429aa</td>
+              <td>25 Nov 2020 01:11</td>
+            </tr>
+
+            <!-- Row 12 -->
+            <tr data-commit-id="12" class="lego-branch-body">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <line x1="50" y1="0" x2="50" y2="28" stroke="#e056fd" stroke-width="2.5" />
+                  <circle cx="50" cy="14" r="4" fill="#e056fd" />
+                </svg>
+              </td>
+              <td style="padding-left: 15px;">LEGO: check in for master to temporary branch.</td>
+              <td><span class="author-tag author-cs">cs</span> csigs</td>
+              <td style="font-family: monospace;">dbcbe93</td>
+              <td>25 Nov 2020 01:11</td>
+            </tr>
+
+            <!-- Row 13 -->
+            <tr data-commit-id="13">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <path class="lego-branch-line" d="M 50 0 Q 38 14 25 14" fill="none" stroke="#e056fd" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>feat(41216): show JSDoc for aliases (#41452)</td>
+              <td><span class="author-tag author-ot">OT</span> Oleksandr T</td>
+              <td style="font-family: monospace;">5adb55e</td>
+              <td>24 Nov 2020 23:40</td>
+            </tr>
+
+            <!-- Row 14 (tagged version) -->
+            <tr data-commit-id="14">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>
+                <span class="badge-tag">v4.2.0</span> Bump version to 4.2.0
+              </td>
+              <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
+              <td style="font-family: monospace;">a1b2c3d</td>
+              <td>20 Nov 2020 10:00</td>
+            </tr>
+
+            <!-- Row 15 (first commit) -->
+            <tr data-commit-id="15">
+              <td class="graph-col">
+                <svg class="graph-svg" viewBox="0 0 80 28">
+                  <line x1="25" y1="0" x2="25" y2="14" stroke="#f5a623" stroke-width="2.5" />
+                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                </svg>
+              </td>
+              <td>Initial commit</td>
+              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+              <td style="font-family: monospace;">0000001</td>
+              <td>1 Jan 2020 00:00</td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Horizontal Splitter Bar for Details Panel -->
+      <div class="resizer-h" id="resizerH"></div>
+
+      <!-- Lower: Commit Details Panel -->
+      <div class="details-panel" id="detailsPanel">
+        <div class="details-tabs">
+          <div class="details-tab active" onclick="switchDetailsTab(this, 'commit')">Commit</div>
+          <div class="details-tab" onclick="switchDetailsTab(this, 'changes')">Changes</div>
+          <div class="details-tab" onclick="switchDetailsTab(this, 'filetree')">File Tree</div>
+        </div>
+
+        <!-- === Commit Tab === -->
+        <div class="details-content" id="panel-commit">
+          <div class="author-card-container">
+            <div class="author-card">
+              <div class="avatar">C</div>
+              <div>
+                <div class="meta-label">Author</div>
+                <div style="font-weight: bold; font-size: 12px;">csigs <span style="font-weight: normal; color: #666; font-size: 11px;">csigs@users.noreply.github.com</span></div>
+                <div class="meta-value">25 Nov 2020 01:11:30 +01:00</div>
+              </div>
+            </div>
+            <div class="author-card">
+              <div class="avatar avatar-github">🐙</div>
+              <div>
+                <div class="meta-label">Committer</div>
+                <div style="font-weight: bold; font-size: 12px;">GitHub <span style="font-weight: normal; color: #666; font-size: 11px;">noreply@github.com</span></div>
+                <div class="meta-value">25 Nov 2020 01:11:30 +01:00</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sha-info">
+            <span style="color: #888;">SHA</span> <span style="margin-right: 20px;">86429aae330aa076f9c776c785cd47c69044187a</span>
+            <span style="color: #888;">PARENTS</span> <a href="#" style="color: #007acc; text-decoration: none;">5adb55e</a> <a href="#" style="color: #007acc; text-decoration: none;">dbcbe93</a>
+          </div>
+
+          <div class="commit-msg-title">LEGO: Merge pull request 41678</div>
+          <div class="commit-msg-body">LEGO: Merge pull request 41678</div>
+
+          <div class="file-tree-header">
+            <span>Changed Files</span>
+            <span onclick="expandAllFiles()" style="cursor: pointer; font-size: 11px; color: #007acc;">Expand All</span>
+          </div>
+
+          <div class="file-diff-wrapper">
+            <div class="file-item" onclick="toggleFileDiff(this)">
+              <span class="file-status-badge file-status-modified">M</span>
+              <span class="file-path">📄 <span style="color: #888;">src/loc/lcl/fra/diagnosticMessages/</span><strong>diagnosticMessages.generated.json.lcl</strong></span>
+              <span class="file-diff-stats"><span class="file-diff-add">+89</span> <span class="file-diff-del">-12</span></span>
+              <span class="file-expand-icon">▶</span>
+            </div>
+            <div class="file-diff-content">
+              <div class="diff-hunk-header">@@ -45,8 +45,12 @@</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">45</span>  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">46</span>    &lt;Val&gt;Type '{{0}}' has no properties in common with type '{{1}}'.&lt;/Val&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">47</span>    &lt;Tgt&gt;Le type '{{0}}' n'a aucune propriété en commun avec le type '{{1}}'.&lt;/Tgt&gt;</div>
+              <div class="diff-line diff-del"><span class="diff-line-number">48</span>-    &lt;Attr Name="helpUrl" /&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">48</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">49</span>    &lt;/Str&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">50</span>  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">51</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">52</span>    &lt;Val&gt;Type '{{0}}' is not assignable to type '{{1}}'.&lt;/Val&gt;</div>
+            </div>
+          </div>
+
+          <div class="file-diff-wrapper">
+            <div class="file-item" onclick="toggleFileDiff(this)">
+              <span class="file-status-badge file-status-modified">M</span>
+              <span class="file-path">📄 <span style="color: #888;">src/loc/lcl/ita/diagnosticMessages/</span><strong>diagnosticMessages.generated.json.lcl</strong></span>
+              <span class="file-diff-stats"><span class="file-diff-add">+65</span> <span class="file-diff-del">-15</span></span>
+              <span class="file-expand-icon">▶</span>
+            </div>
+            <div class="file-diff-content">
+              <div class="diff-hunk-header">@@ -117,7 +117,9 @@</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">117</span>  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">118</span>    &lt;Val&gt;Parameter '{{0}}' of '{{1}}' is of type '{{2}}'.&lt;/Val&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">119</span>    &lt;Tgt&gt;Il parametro '{{0}}' di '{{1}}' è di tipo '{{2}}'.&lt;/Tgt&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">120</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">121</span>  &lt;/Str&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">122</span>  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-del"><span class="diff-line-number">123</span>-    &lt;Attr Name="helpUrl" /&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">123</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">124</span>    &lt;Val&gt;The 'this' type of '{{0}}' is not assignable.&lt;/Val&gt;</div>
+            </div>
+          </div>
+
+          <div class="file-diff-wrapper">
+            <div class="file-item" onclick="toggleFileDiff(this)">
+              <span class="file-status-badge file-status-added">A</span>
+              <span class="file-path">📄 <span style="color: #888;">src/loc/lcl/deu/diagnosticMessages/</span><strong>diagnosticMessages.generated.json.lcl</strong></span>
+              <span class="file-diff-stats"><span class="file-diff-add">+92</span> <span class="file-diff-del">-0</span></span>
+              <span class="file-expand-icon">▶</span>
+            </div>
+            <div class="file-diff-content">
+              <div class="diff-hunk-header">@@ -0,0 +1,8 @@</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">1</span>+&lt;?xml version="1.0" encoding="utf-8"?&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">2</span>+&lt;LCX Locale="de-DE" Type="LCL"&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">3</span>+  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">4</span>+    &lt;Val&gt;Type '{{0}}' has no properties in common with type '{{1}}'.&lt;/Val&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">5</span>+    &lt;Tgt&gt;Der Typ '{{0}}' hat keine gemeinsamen Eigenschaften mit Typ '{{1}}'.&lt;/Tgt&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">6</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">7</span>+  &lt;/Str&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">8</span>+&lt;/LCX&gt;</div>
+            </div>
+          </div>
+
+          <div class="file-change-summary">
+            <span>3 files changed</span>
+            <span class="additions">+246 additions</span>
+            <span class="deletions">-27 deletions</span>
+          </div>
+        </div>
+
+        <!-- === Changes Tab (Split Layout) === -->
+        <div class="details-content" id="panel-changes" style="display:none">
+          <div class="changes-toolbar">
+            <span class="changes-filter active" onclick="setChangesFilter(this, 'all')">All</span>
+            <span class="changes-filter" onclick="setChangesFilter(this, 'modified')">Modified</span>
+            <span class="changes-filter" onclick="setChangesFilter(this, 'added')">Added</span>
+            <span class="changes-filter" onclick="setChangesFilter(this, 'deleted')">Deleted</span>
+            <span style="margin-left: auto; color: #888; font-size: 11px;">3 files, +246 -27</span>
+          </div>
+
+          <div class="changes-split-container">
+            <!-- Left: Tree Panel -->
+            <div class="changes-tree-panel" id="changesTreePanel">
+              <!-- Root node -->
+              <div class="changes-tree-item" data-path="root" onclick="toggleChangesTreeNode(this)">
+                <span class="tree-toggle expanded">▶</span>
+                <span class="tree-icon tree-icon-root">📦</span>
+                <span>TypeScript</span>
+              </div>
+              <div class="changes-tree-children" id="tree-root-children">
+                <!-- src/ -->
+                <div>
+                  <div class="changes-tree-item" data-path="src" onclick="toggleChangesTreeNode(this)">
+                    <span class="tree-toggle expanded">▶</span>
+                    <span class="tree-icon tree-icon-folder">📁</span>
+                    <span>src/</span>
+                  </div>
+                  <div class="changes-tree-children" id="tree-src-children">
+                    <!-- loc/ -->
+                    <div>
+                      <div class="changes-tree-item" data-path="src/loc" onclick="toggleChangesTreeNode(this)">
+                        <span class="tree-toggle expanded">▶</span>
+                        <span class="tree-icon tree-icon-folder">📁</span>
+                        <span>loc/</span>
+                      </div>
+                      <div class="changes-tree-children" id="tree-src-loc-children">
+                        <!-- lcl/ -->
+                        <div>
+                          <div class="changes-tree-item" data-path="src/loc/lcl" onclick="toggleChangesTreeNode(this)">
+                            <span class="tree-toggle expanded">▶</span>
+                            <span class="tree-icon tree-icon-folder">📁</span>
+                            <span>lcl/</span>
+                          </div>
+                          <div class="changes-tree-children" id="tree-src-loc-lcl-children">
+                            <!-- fra/ -->
+                            <div>
+                              <div class="changes-tree-item" data-path="src/loc/lcl/fra" onclick="toggleChangesTreeNode(this)">
+                                <span class="tree-toggle expanded">▶</span>
+                                <span class="tree-icon tree-icon-folder">📁</span>
+                                <span>fra/</span>
+                              </div>
+                              <div class="changes-tree-children" id="tree-src-loc-lcl-fra-children">
+                                <!-- diagnosticMessages/ -->
+                                <div>
+                                  <div class="changes-tree-item" data-path="src/loc/lcl/fra/diagnosticMessages" onclick="toggleChangesTreeNode(this)">
+                                    <span class="tree-toggle expanded">▶</span>
+                                    <span class="tree-icon tree-icon-folder">📁</span>
+                                    <span>diagnosticMessages/</span>
+                                  </div>
+                                  <div class="changes-tree-children" id="tree-src-loc-lcl-fra-diagnosticMessages-children">
+                                    <!-- File -->
+                                    <div class="changes-tree-item changes-file-item" data-change-type="modified" data-file-path="src/loc/lcl/fra/diagnosticMessages/diagnosticMessages.generated.json.lcl" data-diff-target="fra-diff" onclick="selectChangesFile(this, 'fra-diff')">
+                                      <span class="tree-toggle" style="visibility:hidden">▶</span>
+                                      <span class="tree-icon tree-icon-file">📄</span>
+                                      <span>diagnosticMessages.generated.json.lcl</span>
+                                      <span class="tree-file-status modified" title="Modified"></span>
+                                      <span class="tree-file-stats"><span class="add">+89</span> <span class="del">-12</span></span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <!-- ita/ -->
+                            <div>
+                              <div class="changes-tree-item" data-path="src/loc/lcl/ita" onclick="toggleChangesTreeNode(this)">
+                                <span class="tree-toggle expanded">▶</span>
+                                <span class="tree-icon tree-icon-folder">📁</span>
+                                <span>ita/</span>
+                              </div>
+                              <div class="changes-tree-children" id="tree-src-loc-lcl-ita-children">
+                                <!-- diagnosticMessages/ -->
+                                <div>
+                                  <div class="changes-tree-item" data-path="src/loc/lcl/ita/diagnosticMessages" onclick="toggleChangesTreeNode(this)">
+                                    <span class="tree-toggle expanded">▶</span>
+                                    <span class="tree-icon tree-icon-folder">📁</span>
+                                    <span>diagnosticMessages/</span>
+                                  </div>
+                                  <div class="changes-tree-children" id="tree-src-loc-lcl-ita-diagnosticMessages-children">
+                                    <!-- File -->
+                                    <div class="changes-tree-item changes-file-item" data-change-type="modified" data-file-path="src/loc/lcl/ita/diagnosticMessages/diagnosticMessages.generated.json.lcl" data-diff-target="ita-diff" onclick="selectChangesFile(this, 'ita-diff')">
+                                      <span class="tree-toggle" style="visibility:hidden">▶</span>
+                                      <span class="tree-icon tree-icon-file">📄</span>
+                                      <span>diagnosticMessages.generated.json.lcl</span>
+                                      <span class="tree-file-status modified" title="Modified"></span>
+                                      <span class="tree-file-stats"><span class="add">+65</span> <span class="del">-15</span></span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <!-- deu/ -->
+                            <div>
+                              <div class="changes-tree-item" data-path="src/loc/lcl/deu" onclick="toggleChangesTreeNode(this)">
+                                <span class="tree-toggle expanded">▶</span>
+                                <span class="tree-icon tree-icon-folder">📁</span>
+                                <span>deu/</span>
+                              </div>
+                              <div class="changes-tree-children" id="tree-src-loc-lcl-deu-children">
+                                <!-- diagnosticMessages/ -->
+                                <div>
+                                  <div class="changes-tree-item" data-path="src/loc/lcl/deu/diagnosticMessages" onclick="toggleChangesTreeNode(this)">
+                                    <span class="tree-toggle expanded">▶</span>
+                                    <span class="tree-icon tree-icon-folder">📁</span>
+                                    <span>diagnosticMessages/</span>
+                                  </div>
+                                  <div class="changes-tree-children" id="tree-src-loc-lcl-deu-diagnosticMessages-children">
+                                    <!-- File -->
+                                    <div class="changes-tree-item changes-file-item" data-change-type="added" data-file-path="src/loc/lcl/deu/diagnosticMessages/diagnosticMessages.generated.json.lcl" data-diff-target="deu-diff" onclick="selectChangesFile(this, 'deu-diff')">
+                                      <span class="tree-toggle" style="visibility:hidden">▶</span>
+                                      <span class="tree-icon tree-icon-file">📄</span>
+                                      <span>diagnosticMessages.generated.json.lcl</span>
+                                      <span class="tree-file-status added" title="Added"></span>
+                                      <span class="tree-file-stats"><span class="add">+92</span> <span class="del">-0</span></span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resizer -->
+            <div class="changes-resizer-h" id="changesResizerH"></div>
+
+            <!-- Right: Diff Panel -->
+            <div class="changes-diff-panel" id="changesDiffPanel">
+              <div class="changes-diff-placeholder" id="changesDiffPlaceholder">
+                ← Select a file to view changes
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden diff templates -->
+          <div style="display:none" id="diff-template-fra-diff">
+            <div class="changes-diff-content">
+              <div class="diff-file-header">
+                <span class="file-status-badge modified">M</span>
+                <span>src/loc/lcl/fra/diagnosticMessages/diagnosticMessages.generated.json.lcl</span>
+              </div>
+              <div class="diff-hunk-header">@@ -45,8 +45,12 @@</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">45</span>  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">46</span>    &lt;Val&gt;Type '{{0}}' has no properties in common with type '{{1}}'.&lt;/Val&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">47</span>    &lt;Tgt&gt;Le type '{{0}}' n'a aucune propriété en commun avec le type '{{1}}'.&lt;/Tgt&gt;</div>
+              <div class="diff-line diff-del"><span class="diff-line-number">48</span>-    &lt;Attr Name="helpUrl" /&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">48</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">49</span>    &lt;/Str&gt;</div>
+            </div>
+          </div>
+
+          <div style="display:none" id="diff-template-ita-diff">
+            <div class="changes-diff-content">
+              <div class="diff-file-header">
+                <span class="file-status-badge modified">M</span>
+                <span>src/loc/lcl/ita/diagnosticMessages/diagnosticMessages.generated.json.lcl</span>
+              </div>
+              <div class="diff-hunk-header">@@ -117,7 +117,9 @@</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">117</span>  &lt;Str Cat="Error"&gt;</div>
+              <div class="diff-line diff-context"><span class="diff-line-number">118</span>    &lt;Val&gt;Parameter '{{0}}' of '{{1}}' is of type '{{2}}'.&lt;/Val&gt;</div>
+              <div class="diff-line diff-del"><span class="diff-line-number">123</span>-    &lt;Attr Name="helpUrl" /&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">123</span>+    &lt;Attr Name="helpUrl"&gt;https://aka.ms/ts-error-41678&lt;/Attr&gt;</div>
+            </div>
+          </div>
+
+          <div style="display:none" id="diff-template-deu-diff">
+            <div class="changes-diff-content">
+              <div class="diff-file-header">
+                <span class="file-status-badge added">A</span>
+                <span>src/loc/lcl/deu/diagnosticMessages/diagnosticMessages.generated.json.lcl</span>
+              </div>
+              <div class="diff-hunk-header">@@ -0,0 +1,8 @@</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">1</span>+&lt;?xml version="1.0" encoding="utf-8"?&gt;</div>
+              <div class="diff-line diff-add"><span class="diff-line-number">2</span>+&lt;LCX Locale="de-DE" Type="LCL"&gt;</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- === File Tree Tab (All Files / Code Viewer) === -->
+        <div class="details-content" id="panel-filetree" style="display:none">
+          <div class="filetree-toolbar">
+            <span class="ft-label">📦 Files</span>
+            <input class="ft-search" type="text" placeholder="Filter files..." id="filetreeSearch" oninput="filterFileTree(this.value)">
+            <span style="color: #888; font-size: 11px; margin-left: auto;">12 files</span>
+          </div>
+          <div class="filetree-split-container">
+            <!-- Left: Tree Panel -->
+            <div class="filetree-tree-panel" id="filetreeTreePanel">
+              <!-- Root -->
+              <div class="changes-tree-item" data-ft-path="root" onclick="toggleFileTreeFolder(this)">
+                <span class="tree-toggle expanded">▶</span>
+                <span class="tree-icon tree-icon-root">📦</span>
+                <span>TypeScript</span>
+              </div>
+              <div class="changes-tree-children" id="ft-root">
+                <!-- src/ -->
+                <div>
+                  <div class="changes-tree-item" data-ft-path="src" onclick="toggleFileTreeFolder(this)">
+                    <span class="tree-toggle expanded">▶</span>
+                    <span class="tree-icon tree-icon-folder">📁</span>
+                    <span>src/</span>
+                  </div>
+                  <div class="changes-tree-children" id="ft-src">
+                    <!-- compiler/ -->
+                    <div>
+                      <div class="changes-tree-item" data-ft-path="src/compiler" onclick="toggleFileTreeFolder(this)">
+                        <span class="tree-toggle expanded">▶</span>
+                        <span class="tree-icon tree-icon-folder">📁</span>
+                        <span>compiler/</span>
+                      </div>
+                      <div class="changes-tree-children" id="ft-src-compiler">
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/compiler/checker.ts" onclick="selectFileTreeFile(this, 'checker')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>checker.ts</span>
+                        </div>
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/compiler/scanner.ts" onclick="selectFileTreeFile(this, 'scanner')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>scanner.ts</span>
+                        </div>
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/compiler/parser.ts" onclick="selectFileTreeFile(this, 'parser')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>parser.ts</span>
+                        </div>
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/compiler/binder.ts" onclick="selectFileTreeFile(this, 'binder')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>binder.ts</span>
+                        </div>
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/compiler/factory.ts" onclick="selectFileTreeFile(this, 'factory')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>factory.ts</span>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- services/ -->
+                    <div>
+                      <div class="changes-tree-item" data-ft-path="src/services" onclick="toggleFileTreeFolder(this)">
+                        <span class="tree-toggle expanded">▶</span>
+                        <span class="tree-icon tree-icon-folder">📁</span>
+                        <span>services/</span>
+                      </div>
+                      <div class="changes-tree-children" id="ft-src-services">
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/services/services.ts" onclick="selectFileTreeFile(this, 'services')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>services.ts</span>
+                        </div>
+                        <div class="changes-tree-item ft-file-item" data-ft-path="src/services/completions.ts" onclick="selectFileTreeFile(this, 'completions')">
+                          <span class="tree-toggle" style="visibility:hidden">▶</span>
+                          <span class="tree-icon tree-icon-file">📄</span>
+                          <span>completions.ts</span>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- loc/lcl/ (existing translation files) -->
+                    <div>
+                      <div class="changes-tree-item" data-ft-path="src/loc" onclick="toggleFileTreeFolder(this)">
+                        <span class="tree-toggle expanded">▶</span>
+                        <span class="tree-icon tree-icon-folder">📁</span>
+                        <span>loc/</span>
+                      </div>
+                      <div class="changes-tree-children" id="ft-src-loc">
+                        <div>
+                          <div class="changes-tree-item" data-ft-path="src/loc/lcl" onclick="toggleFileTreeFolder(this)">
+                            <span class="tree-toggle expanded">▶</span>
+                            <span class="tree-icon tree-icon-folder">📁</span>
+                            <span>lcl/</span>
+                          </div>
+                          <div class="changes-tree-children" id="ft-src-loc-lcl">
+                            <div>
+                              <div class="changes-tree-item" data-ft-path="src/loc/lcl/fra" onclick="toggleFileTreeFolder(this)">
+                                <span class="tree-toggle expanded">▶</span>
+                                <span class="tree-icon tree-icon-folder">📁</span>
+                                <span>fra/</span>
+                              </div>
+                              <div class="changes-tree-children" id="ft-src-loc-lcl-fra">
+                                <div>
+                                  <div class="changes-tree-item" data-ft-path="src/loc/lcl/fra/diagnosticMessages" onclick="toggleFileTreeFolder(this)">
+                                    <span class="tree-toggle expanded">▶</span>
+                                    <span class="tree-icon tree-icon-folder">📁</span>
+                                    <span>diagnosticMessages/</span>
+                                  </div>
+                                  <div class="changes-tree-children" id="ft-src-loc-lcl-fra-diagnosticMessages">
+                                    <div class="changes-tree-item ft-file-item" data-ft-path="src/loc/lcl/fra/diagnosticMessages/diagnosticMessages.generated.json.lcl" onclick="selectFileTreeFile(this, 'fra-lcl')">
+                                      <span class="tree-toggle" style="visibility:hidden">▶</span>
+                                      <span class="tree-icon tree-icon-file">📄</span>
+                                      <span>diagnosticMessages.generated.json.lcl</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Root files -->
+                <div class="changes-tree-item ft-file-item" data-ft-path="package.json" onclick="selectFileTreeFile(this, 'package')">
+                  <span class="tree-toggle" style="visibility:hidden">▶</span>
+                  <span class="tree-icon tree-icon-file">📄</span>
+                  <span>package.json</span>
+                </div>
+                <div class="changes-tree-item ft-file-item" data-ft-path="tsconfig.json" onclick="selectFileTreeFile(this, 'tsconfig')">
+                  <span class="tree-toggle" style="visibility:hidden">▶</span>
+                  <span class="tree-icon tree-icon-file">📄</span>
+                  <span>tsconfig.json</span>
+                </div>
+                <div class="changes-tree-item ft-file-item" data-ft-path="README.md" onclick="selectFileTreeFile(this, 'readme')">
+                  <span class="tree-toggle" style="visibility:hidden">▶</span>
+                  <span class="tree-icon tree-icon-file">📄</span>
+                  <span>README.md</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resizer -->
+            <div class="filetree-resizer-h" id="filetreeResizerH"></div>
+
+            <!-- Right: Content Panel -->
+            <div class="filetree-content-panel" id="filetreeContentPanel">
+              <div class="filetree-content-placeholder" id="filetreePlaceholder">
+                ← Select a file to view its content
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== Hidden File Content Templates ===== -->
+
+          <!-- checker.ts -->
+          <div style="display:none" id="ft-content-checker">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/compiler/checker.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="cm">// TypeScript Type Checker</span></span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content"><span class="kw">import</span> { Diagnostic } <span class="kw">from</span> <span class="str">"./types"</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content"><span class="kw">import</span> { Symbol, Type } <span class="kw">from</span> <span class="str">"./symbols"</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">checkSourceFile</span>(node: SourceFile): Diagnostic[] {</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">  <span class="kw">const</span> diagnostics: Diagnostic[] = [];</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">  <span class="kw">const</span> checker = <span class="kw">new</span> <span class="fn">TypeChecker</span>();</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">  checker.<span class="fn">checkNode</span>(node, diagnostics);</span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">  <span class="kw">return</span> diagnostics;</span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">}</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content"><span class="kw">class</span> <span class="fn">TypeChecker</span> {</span></div>
+              <div class="code-line"><span class="code-line-number">13</span><span class="code-line-content">  <span class="fn">checkNode</span>(node: Node, diagnostics: Diagnostic[]): <span class="type">void</span> {</span></div>
+              <div class="code-line"><span class="code-line-number">14</span><span class="code-line-content">    <span class="kw">switch</span> (node.kind) {</span></div>
+              <div class="code-line"><span class="code-line-number">15</span><span class="code-line-content">      <span class="kw">case</span> SyntaxKind.SourceFile:</span></div>
+              <div class="code-line"><span class="code-line-number">16</span><span class="code-line-content">        <span class="kw">this</span>.<span class="fn">checkSourceFile</span>(node <span class="kw">as</span> SourceFile, diagnostics);</span></div>
+              <div class="code-line"><span class="code-line-number">17</span><span class="code-line-content">        <span class="kw">break</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">18</span><span class="code-line-content">      <span class="kw">case</span> SyntaxKind.VariableStatement:</span></div>
+              <div class="code-line"><span class="code-line-number">19</span><span class="code-line-content">        <span class="kw">this</span>.<span class="fn">checkVariableStatement</span>(node, diagnostics);</span></div>
+              <div class="code-line"><span class="code-line-number">20</span><span class="code-line-content">        <span class="kw">break</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">21</span><span class="code-line-content">      <span class="kw">default</span>:</span></div>
+              <div class="code-line"><span class="code-line-number">22</span><span class="code-line-content">        <span class="kw">this</span>.<span class="fn">checkUnknownNode</span>(node, diagnostics);</span></div>
+              <div class="code-line"><span class="code-line-number">23</span><span class="code-line-content">    }</span></div>
+              <div class="code-line"><span class="code-line-number">24</span><span class="code-line-content">  }</span></div>
+              <div class="code-line"><span class="code-line-number">25</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- scanner.ts -->
+          <div style="display:none" id="ft-content-scanner">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/compiler/scanner.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="cm">// TypeScript Scanner / Tokenizer</span></span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createScanner</span>(source: <span class="type">string</span>): Scanner {</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">  <span class="kw">let</span> pos = <span class="num">0</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">  <span class="kw">let</span> token: SyntaxKind;</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">  <span class="kw">let</span> tokenValue: <span class="type">string</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">  <span class="kw">function</span> <span class="fn">scan</span>(): SyntaxKind {</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">    <span class="kw">while</span> (pos &lt; source.length) {</span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">      <span class="kw">const</span> ch = source.<span class="fn">charCodeAt</span>(pos);</span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">      <span class="kw">if</span> (ch === CharacterCodes.space || ch === CharacterCodes.tab) {</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content">        pos++;</span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content">        <span class="kw">continue</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">13</span><span class="code-line-content">      }</span></div>
+              <div class="code-line"><span class="code-line-number">14</span><span class="code-line-content">      <span class="kw">if</span> (ch === CharacterCodes.slash) {</span></div>
+              <div class="code-line"><span class="code-line-number">15</span><span class="code-line-content">        <span class="kw">return</span> <span class="fn">scanSlash</span>();</span></div>
+              <div class="code-line"><span class="code-line-number">16</span><span class="code-line-content">      }</span></div>
+              <div class="code-line"><span class="code-line-number">17</span><span class="code-line-content">    }</span></div>
+              <div class="code-line"><span class="code-line-number">18</span><span class="code-line-content">    <span class="kw">return</span> SyntaxKind.EndOfFileToken;</span></div>
+              <div class="code-line"><span class="code-line-number">19</span><span class="code-line-content">  }</span></div>
+              <div class="code-line"><span class="code-line-number">20</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">21</span><span class="code-line-content">  <span class="kw">return</span> { <span class="fn">scan</span>, <span class="fn">getTokenValue</span>: () =&gt; tokenValue };</span></div>
+              <div class="code-line"><span class="code-line-number">22</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- parser.ts -->
+          <div style="display:none" id="ft-content-parser">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/compiler/parser.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="kw">import</span> { createScanner } <span class="kw">from</span> <span class="str">"./scanner"</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">parseSourceFile</span>(source: <span class="type">string</span>): SourceFile {</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">  <span class="kw">const</span> scanner = <span class="fn">createScanner</span>(source);</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">  <span class="kw">const</span> statements: Statement[] = [];</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">  <span class="kw">while</span> (scanner.<span class="fn">scan</span>() !== SyntaxKind.EndOfFileToken) {</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">    <span class="kw">const</span> statement = <span class="fn">parseStatement</span>(scanner);</span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">    <span class="kw">if</span> (statement) {</span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">      statements.<span class="fn">push</span>(statement);</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content">    }</span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content">  }</span></div>
+              <div class="code-line"><span class="code-line-number">13</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">14</span><span class="code-line-content">  <span class="kw">return</span> { <span class="fn">kind</span>: SyntaxKind.SourceFile, statements };</span></div>
+              <div class="code-line"><span class="code-line-number">15</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- binder.ts -->
+          <div style="display:none" id="ft-content-binder">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/compiler/binder.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">bindSourceFile</span>(file: SourceFile) {</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content">  <span class="kw">const</span> binder = <span class="kw">new</span> <span class="fn">Binder</span>();</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">  binder.<span class="fn">bind</span>(file);</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">}</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content"><span class="kw">class</span> <span class="fn">Binder</span> {</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">  parent: Node | <span class="kw">undefined</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">  <span class="fn">bind</span>(node: Node) {</span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">    node.parent = <span class="kw">this</span>.parent;</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content">    <span class="kw">const</span> saveParent = <span class="kw">this</span>.parent;</span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content">    <span class="kw">this</span>.parent = node;</span></div>
+              <div class="code-line"><span class="code-line-number">13</span><span class="code-line-content">    forEachChild(node, child =&gt; <span class="kw">this</span>.<span class="fn">bind</span>(child));</span></div>
+              <div class="code-line"><span class="code-line-number">14</span><span class="code-line-content">    <span class="kw">this</span>.parent = saveParent;</span></div>
+              <div class="code-line"><span class="code-line-number">15</span><span class="code-line-content">  }</span></div>
+              <div class="code-line"><span class="code-line-number">16</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- factory.ts -->
+          <div style="display:none" id="ft-content-factory">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/compiler/factory.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createIdentifier</span>(text: <span class="type">string</span>): Identifier {</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content">  <span class="kw">return</span> { kind: SyntaxKind.Identifier, text };</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">}</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createVariableStatement</span>(</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">  declarations: VariableDeclaration[]</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">): VariableStatement {</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">  <span class="kw">return</span> {</span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">    kind: SyntaxKind.VariableStatement,</span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">    declarations</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content">  };</span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- services.ts -->
+          <div style="display:none" id="ft-content-services">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/services/services.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="kw">import</span> { <span class="fn">checkSourceFile</span> } <span class="kw">from</span> <span class="str">"../compiler/checker"</span>;</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">getDiagnostics</span>(fileName: <span class="type">string</span>): Diagnostic[] {</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">  <span class="kw">const</span> sourceFile = <span class="fn">readFile</span>(fileName);</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">  <span class="kw">if</span> (!sourceFile) <span class="kw">return</span> [];</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">  <span class="kw">return</span> <span class="fn">checkSourceFile</span>(sourceFile);</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- completions.ts -->
+          <div style="display:none" id="ft-content-completions">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/services/completions.ts</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">getCompletionsAtPosition</span>(</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content">  fileName: <span class="type">string</span>, position: <span class="type">number</span></span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">): CompletionEntry[] {</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">  <span class="kw">const</span> program = <span class="fn">getProgram</span>(fileName);</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">  <span class="kw">const</span> checker = program.<span class="fn">getTypeChecker</span>();</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">  <span class="kw">return</span> checker.<span class="fn">getCompletionsAtPosition</span>(fileName, position);</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- fra .lcl file -->
+          <div style="display:none" id="ft-content-fra-lcl">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 src/loc/lcl/fra/diagnosticMessages/diagnosticMessages.generated.json.lcl</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="cm">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content"><span class="op">&lt;</span><span class="fn">LCX</span> <span class="prop">Locale</span><span class="op">=</span><span class="str">"fr-FR"</span> <span class="prop">Type</span><span class="op">=</span><span class="str">"LCL"</span><span class="op">&gt;</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">  <span class="op">&lt;</span><span class="fn">Str</span> <span class="prop">Cat</span><span class="op">=</span><span class="str">"Error"</span><span class="op">&gt;</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">    <span class="op">&lt;</span><span class="fn">Val</span><span class="op">&gt;</span>Type '{{0}}' has no properties in common with type '{{1}}'.<span class="op">&lt;/</span><span class="fn">Val</span><span class="op">&gt;</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">    <span class="op">&lt;</span><span class="fn">Tgt</span><span class="op">&gt;</span>Le type '{{0}}' n'a aucune propriété en commun avec le type '{{1}}'.<span class="op">&lt;/</span><span class="fn">Tgt</span><span class="op">&gt;</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">  <span class="op">&lt;/</span><span class="fn">Str</span><span class="op">&gt;</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content"><span class="op">&lt;/</span><span class="fn">LCX</span><span class="op">&gt;</span></div>
+            </div>
+          </div>
+
+          <!-- package.json -->
+          <div style="display:none" id="ft-content-package">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 package.json</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content">{</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content">  <span class="json-key">"name"</span>: <span class="json-str">"typescript"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">  <span class="json-key">"version"</span>: <span class="json-str">"4.2.0-dev"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">  <span class="json-key">"description"</span>: <span class="json-str">"TypeScript is a superset of JavaScript"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">  <span class="json-key">"main"</span>: <span class="json-str">"./lib/typescript.js"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">  <span class="json-key">"scripts"</span>: {</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">    <span class="json-key">"build"</span>: <span class="json-str">"npx gulp build"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">    <span class="json-key">"test"</span>: <span class="json-str">"npx gulp tests"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">    <span class="json-key">"lint"</span>: <span class="json-str">"npx gulp lint"</span></span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">  },</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content">  <span class="json-key">"repository"</span>: {</span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content">    <span class="json-key">"type"</span>: <span class="json-str">"git"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">13</span><span class="code-line-content">    <span class="json-key">"url"</span>: <span class="json-str">"https://github.com/Microsoft/TypeScript.git"</span></span></div>
+              <div class="code-line"><span class="code-line-number">14</span><span class="code-line-content">  }</span></div>
+              <div class="code-line"><span class="code-line-number">15</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- tsconfig.json -->
+          <div style="display:none" id="ft-content-tsconfig">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 tsconfig.json</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content">{</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content">  <span class="json-key">"compilerOptions"</span>: {</span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">    <span class="json-key">"target"</span>: <span class="json-str">"ES2019"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content">    <span class="json-key">"module"</span>: <span class="json-str">"commonjs"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">    <span class="json-key">"lib"</span>: [<span class="json-str">"ES2019"</span>],</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content">    <span class="json-key">"outDir"</span>: <span class="json-str">"./built"</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">    <span class="json-key">"strict"</span>: <span class="json-bool">true</span>,</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">    <span class="json-key">"esModuleInterop"</span>: <span class="json-bool">true</span></span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content">  },</span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">  <span class="json-key">"include"</span>: [<span class="json-str">"src/**/*"</span>]</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content">}</span></div>
+            </div>
+          </div>
+
+          <!-- README.md -->
+          <div style="display:none" id="ft-content-readme">
+            <div class="filetree-code-viewer">
+              <div class="code-file-header">📄 README.md</div>
+              <div class="code-line"><span class="code-line-number">1</span><span class="code-line-content"><span class="cm"># TypeScript</span></div>
+              <div class="code-line"><span class="code-line-number">2</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">3</span><span class="code-line-content">TypeScript is a language for application-scale JavaScript.</span></div>
+              <div class="code-line"><span class="code-line-number">4</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">5</span><span class="code-line-content">## Building</span></div>
+              <div class="code-line"><span class="code-line-number">6</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">7</span><span class="code-line-content">  npm install</span></div>
+              <div class="code-line"><span class="code-line-number">8</span><span class="code-line-content">  npx gulp build</span></div>
+              <div class="code-line"><span class="code-line-number">9</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">10</span><span class="code-line-content">## Testing</span></div>
+              <div class="code-line"><span class="code-line-number">11</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">12</span><span class="code-line-content">  npx gulp tests</span></div>
+              <div class="code-line"><span class="code-line-number">13</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">14</span><span class="code-line-content">## Contributing</span></div>
+              <div class="code-line"><span class="code-line-number">15</span><span class="code-line-content"></span></div>
+              <div class="code-line"><span class="code-line-number">16</span><span class="code-line-content">Please see CONTRIBUTING.md for details.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="changes-view.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
