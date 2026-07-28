@@ -142,3 +142,6 @@ vite.config.ts.timestamp-*
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Test screenshots
+screenshots/

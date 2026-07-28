@@ -4,12 +4,16 @@ A standalone, lightweight Git web viewer that can be launched from any git repos
 
 ## Features
 
-- **Repository Status Dashboard** - View modified, added, deleted, and untracked files with visual indicators
-- **Diff Viewer** - Side-by-side or unified diff views with syntax highlighting
-- **Staging & Committing** - Selective file staging with checkbox selection and commit interface
+- **Repository Status Dashboard** - View modified, added, deleted, untracked, staged, renamed, and conflicted files with ahead/behind tracking against upstream
+- **Diff Viewer** - Side-by-side or unified diff views with syntax highlighting; supports staged diffs and untracked file rendering
+- **Staging & Committing** - Selective file staging with checkbox selection and commit interface (single or batch files)
+- **Unstage & Discard** - Unstage files from index or discard working directory changes (supports both tracked and untracked files)
 - **Branch Management** - Create, switch, and delete branches with an intuitive UI
-- **Commit History** - Browse commits with author info, dates, and messages
-- **Remote Operations** - Fetch, pull, and push with visual sync status indicators
+- **Commit History** - Browse commits with author info, dates, and messages; drill into individual commit details with diff
+- **Remote Operations** - Fetch, pull (with `--rebase` support), and push (with `--force` / `--set-upstream` support)
+- **Config Management** - Read and write git config (user.name, user.email, init.defaultbranch)
+- **Security** - CSRF token protection on all write APIs, input validation (path traversal prevention, branch name/hash/message validation), error message sanitization
+- **REST API** - All git operations exposed as JSON API endpoints for custom frontends or integrations
 - **Mobile-First Responsive Design** - Works seamlessly on desktop, tablet, and mobile devices
 
 ## Screenshots
@@ -124,23 +128,26 @@ WebGit exposes a REST API for git operations:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/status` | GET | Get repository status |
-| `/api/branches` | GET | List all branches |
-| `/api/branches` | POST | Create a new branch |
+| `/health` | GET | Health check (status, timestamp, uptime) |
+| `/api/csrf-token` | GET | Get a CSRF token for write operations |
+| `/api/status` | GET | Get repository status (current branch, tracking, ahead/behind, file states) |
+| `/api/branches` | GET | List all local and remote branches |
+| `/api/branches` | POST | Create a new branch (`name`, `checkout` optional) |
 | `/api/branches/checkout` | POST | Checkout a branch |
-| `/api/branches/:name` | DELETE | Delete a branch |
-| `/api/commits` | GET | Get commit history |
-| `/api/commits/:hash` | GET | Get commit details |
-| `/api/diff` | GET | Get diff for a file |
-| `/api/stage` | POST | Stage files |
-| `/api/unstage` | POST | Unstage files |
-| `/api/commit` | POST | Create a commit |
-| `/api/discard` | POST | Discard changes |
-| `/api/remotes` | GET | List remotes |
+| `/api/branches/:name` | DELETE | Delete a local branch |
+| `/api/commits` | GET | Get commit history (optional `?limit=N`) |
+| `/api/commits/:hash` | GET | Get commit details with diff and stats |
+| `/api/diff` | GET | Get diff (`?file=path` optional, `?staged=true` optional; handles untracked files) |
+| `/api/stage` | POST | Stage files (`files[]` or all if empty) |
+| `/api/unstage` | POST | Unstage files (`files[]` or all if empty) |
+| `/api/commit` | POST | Create a commit (`message`) |
+| `/api/discard` | POST | Discard changes (`files[]` or all; handles tracked and untracked) |
+| `/api/remotes` | GET | List remotes with fetch/push URLs |
 | `/api/fetch` | POST | Fetch from remote |
-| `/api/pull` | POST | Pull from remote |
-| `/api/push` | POST | Push to remote |
-| `/api/config` | GET/POST | Get/set git config |
+| `/api/pull` | POST | Pull from remote (optional `rebase: true` for `git pull --rebase`) |
+| `/api/push` | POST | Push to remote (optional `force: true`, `setUpstream: true`) |
+| `/api/config` | GET | Get git config (user.name, user.email, init.defaultbranch) |
+| `/api/config` | POST | Set git config (whitelisted keys only) |
 
 ## Testing
 
@@ -163,6 +170,7 @@ npx playwright test --project=mobile
 - **Backend**: Node.js, Express.js
 - **Git Operations**: simple-git
 - **Frontend**: Vanilla JavaScript, CSS (Mobile-first)
+- **Security**: Built-in CSRF token validation, input sanitization, path traversal prevention
 - **Testing**: Playwright
 
 ## Keyboard Shortcuts
