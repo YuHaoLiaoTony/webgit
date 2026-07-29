@@ -148,3 +148,7 @@ screenshots/
 
 # Built CSS (generated from src/style.css via postcss)
 public/css/style.css
+
+# Build artifacts from ui/ Vite project
+/public/index.html
+/public/assets/

@@ -497,7 +497,176 @@ function commitChanges() {
   diffPanel.innerHTML = '<div class="changes-view-diff-placeholder" style="color:#28a745;">✔ Committed ' + stagedCount + ' file(s): ' + msg + '</div>';
 }
 
-// Initialize: action buttons start disabled
+// --- 25. Graph Panel Resizer ---
+const graphResizer = document.getElementById('graphResizer');
+const graphPanel = document.getElementById('graphPanel');
+let isDraggingGraph = false;
+let graphStartX = 0;
+let graphStartWidth = 0;
+
+if (graphResizer) {
+  graphResizer.addEventListener('mousedown', function(e) {
+    isDraggingGraph = true;
+    graphStartX = e.clientX;
+    graphStartWidth = graphPanel.offsetWidth;
+    graphResizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+}
+
+document.addEventListener('mousemove', function(e) {
+  if (isDraggingGraph) {
+    var deltaX = graphStartX - e.clientX;
+    var newWidth = graphStartWidth + deltaX;
+    if (newWidth >= 140 && newWidth <= 500) {
+      graphPanel.style.width = newWidth + 'px';
+    }
+  }
+});
+
+document.addEventListener('mouseup', function() {
+  if (isDraggingGraph) {
+    isDraggingGraph = false;
+    if (graphResizer) graphResizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+});
+
+// --- 26. Draw Commit Graph Overview (Lane Routing) ---
+//
+//  Logic:
+//    1) Lane assignment: trunk=lane0, branch=lanes 1..n
+//    2) Track active lanes per row (a lane is active from first to last occurrence)
+//    3) Draw vertical through-lines for each active lane in its own color
+//    4) Branch-out: curve from trunk to new lane; Merge-in: curve back to trunk
+//    5) Each lane has ONE consistent color throughout
+//
+function drawGraphOverview() {
+  var svg = document.getElementById('graphOverviewSvg');
+  if (!svg) return;
+
+  var rows = document.querySelectorAll('.commit-table tbody tr');
+  var commits = Array.from(rows).map(function(row) {
+    return {
+      hash: (row.cells[3] || {}).textContent || '',
+      subject: (row.cells[1] || {}).textContent || '',
+    };
+  });
+
+  if (commits.length === 0) return;
+
+  var laneColors = ['#f5a623', '#4a90e2', '#e056fd', '#28a745', '#cb2431'];
+  var nodeHeight = 28;
+  var totalHeight = commits.length * nodeHeight + 40;
+
+  svg.setAttribute('viewBox', '0 0 220 ' + totalHeight);
+
+  // ── 1. Lane assignment ──
+  //  Static data: row 0-3 lane0; row 4-6 branch (lane1); row 7-9 lane0;
+  //  row 10-11 branch (lane2); row 12-14 lane0.
+  var laneOf = commits.map(function(c, idx) {
+    if (idx >= 4 && idx <= 6) return 1;  // first branch
+    if (idx >= 10 && idx <= 11) return 2; // second branch
+    return 0;                             // trunk
+  });
+
+  // ── 2. Active lanes per row ──
+  //  A lane is active from its first occurrence to its last.
+  var firstIdx = {}, lastIdx = {};
+  laneOf.forEach(function(lane, idx) {
+    if (firstIdx[lane] === undefined) firstIdx[lane] = idx;
+    lastIdx[lane] = idx;
+  });
+  // Lane 0 (trunk) spans all rows
+  firstIdx[0] = 0;
+  lastIdx[0] = commits.length - 1;
+
+  var maxLane = Math.max.apply(null, Object.keys(firstIdx).map(Number));
+
+  // Lane X positions (consistent)
+  var laneX = {};
+  for (var l = 0; l <= maxLane; l++) {
+    laneX[l] = 30 + l * 60;
+  }
+
+  // ── 3. Build nodes ──
+  var nodes = commits.map(function(c, idx) {
+    var lane = laneOf[idx];
+    return {
+      idx: idx,
+      x: laneX[lane],
+      y: 20 + idx * nodeHeight + nodeHeight / 2,
+      lane: lane,
+      color: laneColors[lane % laneColors.length],
+    };
+  });
+
+  // ── 4. Draw segments (top→bottom, row by row) ──
+  for (var i = 0; i < commits.length; i++) {
+    var node = nodes[i];
+    var isLast = i === commits.length - 1;
+
+    // Determine active lanes at this row
+    var active = [];
+    for (var l = 0; l <= maxLane; l++) {
+      if (i >= firstIdx[l] && i <= lastIdx[l]) {
+        active.push(l);
+      }
+    }
+
+    // Draw downward segment for each active lane that continues
+    active.forEach(function(lane) {
+      var continues = !isLast && (i + 1) >= firstIdx[lane] && (i + 1) <= lastIdx[lane];
+      if (!continues) return;
+
+      var x = laneX[lane];
+      var color = laneColors[lane % laneColors.length];
+      var nextY = 20 + (i + 1) * nodeHeight + nodeHeight / 2;
+
+      var isNewLane = i === firstIdx[lane] && lane !== 0;
+      var isEndLane = i === lastIdx[lane] && lane !== 0;
+
+      if (isNewLane) {
+        // Branch OUT: curve from trunk to new lane
+        var trunkX = laneX[0];
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M ' + trunkX + ' ' + node.y + ' Q ' + ((trunkX + x) / 2) + ' ' + node.y + ' ' + x + ' ' + nextY);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', color);
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(path);
+      } else if (isEndLane) {
+        // Merge IN: curve from branch lane back to trunk
+        var trunkX = laneX[0];
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M ' + x + ' ' + node.y + ' Q ' + ((trunkX + x) / 2) + ' ' + nextY + ' ' + trunkX + ' ' + nextY);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', color);
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(path);
+      } else {
+        // Normal vertical through-line
+        var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x); line.setAttribute('y1', node.y);
+        line.setAttribute('x2', x); line.setAttribute('y2', nextY);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '2.5');
+        line.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(line);
+      }
+    });
+  }
+
+  // ── 5. No circles — lines only
+}
+
+// Initialize: action buttons start disabled + draw graph
 document.addEventListener('DOMContentLoaded', function() {
   updateActionButtons();
+  drawGraphOverview();
 });

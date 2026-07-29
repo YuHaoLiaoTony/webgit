@@ -204,16 +204,28 @@ export function createGitAPI(repoPath) {
 
     async getCommitHistory(limit = 50) {
       try {
-        const log = await git.log({ maxCount: limit });
-        return log.all.map(commit => ({
-          hash: commit.hash,
-          shortHash: commit.hash.substring(0, 7),
-          message: commit.message,
-          author: commit.author_name,
-          email: commit.author_email,
-          date: commit.date,
-          refs: commit.refs
-        }));
+        // Use raw to get parent hashes (simple-git log doesn't include parents by default)
+        const raw = await git.raw([
+          'log',
+          `--max-count=${limit}`,
+          '--format=%H|%P|%s|%an|%ae|%ai|%D'
+        ]);
+
+        return raw.trim().split('\n').filter(Boolean).map(line => {
+          const parts = line.split('|');
+          const hash = parts[0];
+          const parentHashes = parts[1] || '';
+          return {
+            hash,
+            shortHash: hash.substring(0, 7),
+            message: parts[2] || '',
+            author: parts[3] || '',
+            email: parts[4] || '',
+            date: parts[5] || '',
+            refs: parts[6] || '',
+            parents: parentHashes ? parentHashes.split(' ') : [],
+          };
+        });
       } catch (e) {
         // Repository might have no commits
         return [];

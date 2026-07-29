@@ -154,270 +154,286 @@
       <!-- Upper: Working Directory Changes View (loaded dynamically from changes-view.html) -->
       <div class="changes-view" id="changesView" style="display:none"></div>
 
-      <!-- Upper: Commit List Table -->
+      <!-- Upper: Commit List Table + Chart (Split Layout) -->
       <div class="commit-list-container">
-        <table class="commit-table">
-          <thead>
-            <tr>
-              <th style="width: 80px;">Graph</th>
-              <th>Subject</th>
-              <th style="width: 140px;">Author</th>
-              <th style="width: 80px;">Hash</th>
-              <th style="width: 130px;">Date</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="commit-split-container">
+          <!-- Left: Commit Table -->
+          <div class="commit-table-panel">
+            <table class="commit-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">Graph</th>
+                  <th>Subject</th>
+                  <th style="width: 140px;">Author</th>
+                  <th style="width: 80px;">Hash</th>
+                  <th style="width: 130px;">Date</th>
+                </tr>
+              </thead>
+              <tbody>
 
-            <!-- Row 1 (Master Head) -->
-            <tr data-commit-id="1">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="14" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="5" fill="#f5a623" stroke="#fff" stroke-width="1.5" />
-                </svg>
-              </td>
-              <td>
-                <span class="badge-branch">✓ master</span>
-                <strong>Update package-lock.json</strong>
-              </td>
-              <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
-              <td style="font-family: monospace;">ee57040</td>
-              <td>27 Nov 2020 07:21</td>
-            </tr>
+                <!-- Row 1 (Master Head) -->
+                <tr data-commit-id="1">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="14" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="5" fill="#f5a623" stroke="#fff" stroke-width="1.5" />
+                    </svg>
+                  </td>
+                  <td>
+                    <span class="badge-branch">✓ master</span>
+                    <strong>Update package-lock.json</strong>
+                  </td>
+                  <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
+                  <td style="font-family: monospace;">ee57040</td>
+                  <td>27 Nov 2020 07:21</td>
+                </tr>
 
-            <!-- Row 2 -->
-            <tr data-commit-id="2">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>Fix getTypeFacts for pattern template literal types (#41693)</td>
-              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
-              <td style="font-family: monospace;">411c6d0</td>
-              <td>26 Nov 2020 17:55</td>
-            </tr>
+                <!-- Row 2 -->
+                <tr data-commit-id="2">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>Fix getTypeFacts for pattern template literal types (#41693)</td>
+                  <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+                  <td style="font-family: monospace;">411c6d0</td>
+                  <td>26 Nov 2020 17:55</td>
+                </tr>
 
-            <!-- Row 3 -->
-            <tr data-commit-id="3">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>Update package-lock.json</td>
-              <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
-              <td style="font-family: monospace;">d616d8f</td>
-              <td>26 Nov 2020 07:21</td>
-            </tr>
+                <!-- Row 3 -->
+                <tr data-commit-id="3">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>Update package-lock.json</td>
+                  <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
+                  <td style="font-family: monospace;">d616d8f</td>
+                  <td>26 Nov 2020 07:21</td>
+                </tr>
 
-            <!-- Row 4 -->
-            <tr data-commit-id="4">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>Properly cache types for shared control flow nodes (#41665)</td>
-              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
-              <td style="font-family: monospace;">ec1490f</td>
-              <td>26 Nov 2020 01:51</td>
-            </tr>
+                <!-- Row 4 -->
+                <tr data-commit-id="4">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>Properly cache types for shared control flow nodes (#41665)</td>
+                  <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+                  <td style="font-family: monospace;">ec1490f</td>
+                  <td>26 Nov 2020 01:51</td>
+                </tr>
 
-            <!-- Row 5 (Branch commit - toggle point) -->
-            <tr data-commit-id="5">
-              <td class="graph-col graph-col-toggle" onclick="toggleBranch(this, 'fix41651-branch-body', 'fix41651-merge-line')">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <!-- Main Orange Line -->
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <!-- Branch Blue Curve out -->
-                  <path class="toggle-branch-line" d="M 25 14 Q 38 14 50 28" fill="none" stroke="#4a90e2" stroke-width="2.5" />
-                  <!-- Branch point with toggle ring + chevron -->
-                  <circle cx="25" cy="14" r="8" fill="#fff" />
-                  <circle class="toggle-part" cx="25" cy="14" r="7" fill="none" stroke="#f5a623" stroke-width="2.5" />
-                  <path class="toggle-part toggle-chevron" d="M 22 12 L 25 17 L 28 12" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </td>
-              <td>
-                <span class="badge-tag">origin/fix41651</span> Accept new baselines
-              </td>
-              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
-              <td style="font-family: monospace;">5e2509b</td>
-              <td>25 Nov 2020 21:17</td>
-            </tr>
+                <!-- Row 5 (Branch commit - toggle point) -->
+                <tr data-commit-id="5">
+                  <td class="graph-col graph-col-toggle" onclick="toggleBranch(this, 'fix41651-branch-body', 'fix41651-merge-line')">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <path class="toggle-branch-line" d="M 25 14 Q 38 14 50 28" fill="none" stroke="#4a90e2" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="8" fill="#fff" />
+                      <circle class="toggle-part" cx="25" cy="14" r="7" fill="none" stroke="#f5a623" stroke-width="2.5" />
+                      <path class="toggle-part toggle-chevron" d="M 22 12 L 25 17 L 28 12" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </td>
+                  <td>
+                    <span class="badge-tag">origin/fix41651</span> Accept new baselines
+                  </td>
+                  <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+                  <td style="font-family: monospace;">5e2509b</td>
+                  <td>25 Nov 2020 21:17</td>
+                </tr>
 
-            <!-- Row 6 (Branch Child 1 - collapsible child) -->
-            <tr data-commit-id="6" class="fix41651-branch-body">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <line x1="50" y1="0" x2="50" y2="28" stroke="#4a90e2" stroke-width="2.5" />
-                  <circle cx="50" cy="14" r="4" fill="#4a90e2" />
-                </svg>
-              </td>
-              <td style="padding-left: 20px;">Add tests</td>
-              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
-              <td style="font-family: monospace;">24c6da9</td>
-              <td>25 Nov 2020 21:17</td>
-            </tr>
+                <!-- Row 6 (Branch Child 1 - collapsible child) -->
+                <tr data-commit-id="6" class="fix41651-branch-body">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <line x1="50" y1="0" x2="50" y2="28" stroke="#4a90e2" stroke-width="2.5" />
+                      <circle cx="50" cy="14" r="4" fill="#4a90e2" />
+                    </svg>
+                  </td>
+                  <td style="padding-left: 20px;">Add tests</td>
+                  <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+                  <td style="font-family: monospace;">24c6da9</td>
+                  <td>25 Nov 2020 21:17</td>
+                </tr>
 
-            <!-- Row 6b (branch commit 2) -->
-            <tr data-commit-id="6b" class="fix41651-branch-body">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <line x1="50" y1="0" x2="50" y2="28" stroke="#4a90e2" stroke-width="2.5" />
-                  <circle cx="50" cy="14" r="4" fill="#4a90e2" />
-                </svg>
-              </td>
-              <td style="padding-left: 20px;">Update test snapshots</td>
-              <td><span class="author-tag author-sg">SG</span> Song Gao</td>
-              <td style="font-family: monospace;">f9e8d7c</td>
-              <td>25 Nov 2020 20:45</td>
-            </tr>
+                <!-- Row 6b (branch commit 2) -->
+                <tr data-commit-id="6b" class="fix41651-branch-body">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <line x1="50" y1="0" x2="50" y2="28" stroke="#4a90e2" stroke-width="2.5" />
+                      <circle cx="50" cy="14" r="4" fill="#4a90e2" />
+                    </svg>
+                  </td>
+                  <td style="padding-left: 20px;">Update test snapshots</td>
+                  <td><span class="author-tag author-sg">SG</span> Song Gao</td>
+                  <td style="font-family: monospace;">f9e8d7c</td>
+                  <td>25 Nov 2020 20:45</td>
+                </tr>
 
-            <!-- Row 7 (Merge back) -->
-            <tr data-commit-id="7">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <path class="fix41651-merge-line" d="M 50 0 Q 38 14 25 14" fill="none" stroke="#4a90e2" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>
-                Normalize `${string}` to just string, fix getTypeFacts
-              </td>
-              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
-              <td style="font-family: monospace;">3c3fbbd</td>
-              <td>25 Nov 2020 18:49</td>
-            </tr>
+                <!-- Row 7 (Merge back) -->
+                <tr data-commit-id="7">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <path class="fix41651-merge-line" d="M 50 0 Q 38 14 25 14" fill="none" stroke="#4a90e2" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>
+                    Normalize `${string}` to just string, fix getTypeFacts
+                  </td>
+                  <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+                  <td style="font-family: monospace;">3c3fbbd</td>
+                  <td>25 Nov 2020 18:49</td>
+                </tr>
 
-            <!-- Row 8 -->
-            <tr data-commit-id="8">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>replace whole path if directory separator appears for import completion. (#41412)</td>
-              <td><span class="author-tag author-sg">SG</span> Song Gao</td>
-              <td style="font-family: monospace;">d5779c7</td>
-              <td>25 Nov 2020 18:37</td>
-            </tr>
+                <!-- Row 8 -->
+                <tr data-commit-id="8">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>replace whole path if directory separator appears for import completion. (#41412)</td>
+                  <td><span class="author-tag author-sg">SG</span> Song Gao</td>
+                  <td style="font-family: monospace;">d5779c7</td>
+                  <td>25 Nov 2020 18:37</td>
+                </tr>
 
-            <!-- Row 9 -->
-            <tr data-commit-id="9">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>fix(41216): update baseline (#41687)</td>
-              <td><span class="author-tag author-ot">OT</span> Oleksandr T</td>
-              <td style="font-family: monospace;">242e020</td>
-              <td>25 Nov 2020 18:11</td>
-            </tr>
+                <!-- Row 9 -->
+                <tr data-commit-id="9">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>fix(41216): update baseline (#41687)</td>
+                  <td><span class="author-tag author-ot">OT</span> Oleksandr T</td>
+                  <td style="font-family: monospace;">242e020</td>
+                  <td>25 Nov 2020 18:11</td>
+                </tr>
 
-            <!-- Row 10 -->
-            <tr data-commit-id="10">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>Remove obsolete go-to-definition code after CommonJS alias changes (#41522)</td>
-              <td><span class="author-tag author-ab">AB</span> Andrew Branch</td>
-              <td style="font-family: monospace;">3fa30f4</td>
-              <td>25 Nov 2020 18:01</td>
-            </tr>
+                <!-- Row 10 -->
+                <tr data-commit-id="10">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>Remove obsolete go-to-definition code after CommonJS alias changes (#41522)</td>
+                  <td><span class="author-tag author-ab">AB</span> Andrew Branch</td>
+                  <td style="font-family: monospace;">3fa30f4</td>
+                  <td>25 Nov 2020 18:01</td>
+                </tr>
 
-            <!-- Row 11 (Merge PR - toggle point) -->
-            <tr data-commit-id="11" class="selected">
-              <td class="graph-col graph-col-toggle" onclick="toggleBranch(this, 'lego-branch-body', 'lego-branch-line')">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <path class="toggle-branch-line" d="M 25 14 Q 38 14 50 28" fill="none" stroke="#e056fd" stroke-width="2.5" />
-                  <!-- Larger merge node with toggle ring -->
-                  <circle cx="25" cy="14" r="8" fill="#fff" />
-                  <circle class="toggle-part" cx="25" cy="14" r="7" fill="none" stroke="#f5a623" stroke-width="2.5" />
-                  <path class="toggle-part toggle-chevron" d="M 22 12 L 25 17 L 28 12" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </td>
-              <td><strong>LEGO: Merge pull request 41678</strong></td>
-              <td><span class="author-tag author-cs">cs</span> csigs</td>
-              <td style="font-family: monospace;">86429aa</td>
-              <td>25 Nov 2020 01:11</td>
-            </tr>
+                <!-- Row 11 (Merge PR - toggle point) -->
+                <tr data-commit-id="11" class="selected">
+                  <td class="graph-col graph-col-toggle" onclick="toggleBranch(this, 'lego-branch-body', 'lego-branch-line')">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <path class="toggle-branch-line" d="M 25 14 Q 38 14 50 28" fill="none" stroke="#e056fd" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="8" fill="#fff" />
+                      <circle class="toggle-part" cx="25" cy="14" r="7" fill="none" stroke="#f5a623" stroke-width="2.5" />
+                      <path class="toggle-part toggle-chevron" d="M 22 12 L 25 17 L 28 12" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </td>
+                  <td><strong>LEGO: Merge pull request 41678</strong></td>
+                  <td><span class="author-tag author-cs">cs</span> csigs</td>
+                  <td style="font-family: monospace;">86429aa</td>
+                  <td>25 Nov 2020 01:11</td>
+                </tr>
 
-            <!-- Row 12 -->
-            <tr data-commit-id="12" class="lego-branch-body">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <line x1="50" y1="0" x2="50" y2="28" stroke="#e056fd" stroke-width="2.5" />
-                  <circle cx="50" cy="14" r="4" fill="#e056fd" />
-                </svg>
-              </td>
-              <td style="padding-left: 15px;">LEGO: check in for master to temporary branch.</td>
-              <td><span class="author-tag author-cs">cs</span> csigs</td>
-              <td style="font-family: monospace;">dbcbe93</td>
-              <td>25 Nov 2020 01:11</td>
-            </tr>
+                <!-- Row 12 -->
+                <tr data-commit-id="12" class="lego-branch-body">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <line x1="50" y1="0" x2="50" y2="28" stroke="#e056fd" stroke-width="2.5" />
+                      <circle cx="50" cy="14" r="4" fill="#e056fd" />
+                    </svg>
+                  </td>
+                  <td style="padding-left: 15px;">LEGO: check in for master to temporary branch.</td>
+                  <td><span class="author-tag author-cs">cs</span> csigs</td>
+                  <td style="font-family: monospace;">dbcbe93</td>
+                  <td>25 Nov 2020 01:11</td>
+                </tr>
 
-            <!-- Row 13 -->
-            <tr data-commit-id="13">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <path class="lego-branch-line" d="M 50 0 Q 38 14 25 14" fill="none" stroke="#e056fd" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>feat(41216): show JSDoc for aliases (#41452)</td>
-              <td><span class="author-tag author-ot">OT</span> Oleksandr T</td>
-              <td style="font-family: monospace;">5adb55e</td>
-              <td>24 Nov 2020 23:40</td>
-            </tr>
+                <!-- Row 13 -->
+                <tr data-commit-id="13">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <path class="lego-branch-line" d="M 50 0 Q 38 14 25 14" fill="none" stroke="#e056fd" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>feat(41216): show JSDoc for aliases (#41452)</td>
+                  <td><span class="author-tag author-ot">OT</span> Oleksandr T</td>
+                  <td style="font-family: monospace;">5adb55e</td>
+                  <td>24 Nov 2020 23:40</td>
+                </tr>
 
-            <!-- Row 14 (tagged version) -->
-            <tr data-commit-id="14">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>
-                <span class="badge-tag">v4.2.0</span> Bump version to 4.2.0
-              </td>
-              <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
-              <td style="font-family: monospace;">a1b2c3d</td>
-              <td>20 Nov 2020 10:00</td>
-            </tr>
+                <!-- Row 14 (tagged version) -->
+                <tr data-commit-id="14">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>
+                    <span class="badge-tag">v4.2.0</span> Bump version to 4.2.0
+                  </td>
+                  <td><span class="author-tag author-bot">TB</span> TypeScript Bot</td>
+                  <td style="font-family: monospace;">a1b2c3d</td>
+                  <td>20 Nov 2020 10:00</td>
+                </tr>
 
-            <!-- Row 15 (first commit) -->
-            <tr data-commit-id="15">
-              <td class="graph-col">
-                <svg class="graph-svg" viewBox="0 0 80 28">
-                  <line x1="25" y1="0" x2="25" y2="14" stroke="#f5a623" stroke-width="2.5" />
-                  <circle cx="25" cy="14" r="4" fill="#f5a623" />
-                </svg>
-              </td>
-              <td>Initial commit</td>
-              <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
-              <td style="font-family: monospace;">0000001</td>
-              <td>1 Jan 2020 00:00</td>
-            </tr>
+                <!-- Row 15 (first commit) -->
+                <tr data-commit-id="15">
+                  <td class="graph-col">
+                    <svg class="graph-svg" viewBox="0 0 80 28">
+                      <line x1="25" y1="0" x2="25" y2="14" stroke="#f5a623" stroke-width="2.5" />
+                      <circle cx="25" cy="14" r="4" fill="#f5a623" />
+                    </svg>
+                  </td>
+                  <td>Initial commit</td>
+                  <td><span class="author-tag author-ah">AH</span> Anders Hejlsberg</td>
+                  <td style="font-family: monospace;">0000001</td>
+                  <td>1 Jan 2020 00:00</td>
+                </tr>
 
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Graph Resizer -->
+          <div class="graph-resizer" id="graphResizer"></div>
+
+          <!-- Right: Commit Graph Overview -->
+          <div class="graph-panel" id="graphPanel">
+            <div class="graph-panel-header">
+              <span class="graph-panel-title">Graph</span>
+            </div>
+            <div class="graph-panel-body">
+              <svg class="graph-overview-svg" id="graphOverviewSvg" preserveAspectRatio="xMidYMin meet">
+                <!-- Graph lines and nodes will be drawn by JS -->
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Horizontal Splitter Bar for Details Panel -->
