@@ -7,6 +7,8 @@ import DetailsPanel from './components/DetailsPanel.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import { useUiStore } from './stores/ui.js'
 
+const uiStore = useUiStore()
+
 // --- Resizer: Vertical (sidebar width) ---
 const sidebarRef = ref(null)
 const resizerVRef = ref(null)

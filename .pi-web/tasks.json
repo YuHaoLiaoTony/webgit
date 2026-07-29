@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "deploy.ui",
+      "title": "Deploy UI",
+      "group": "Build & Deploy",
+      "description": "Build Vue UI with Vite and deploy to public/",
+      "command": "bash scripts/deploy.sh"
+    },
+    {
+      "id": "deploy.ui.skip-build",
+      "title": "Deploy UI (skip build)",
+      "group": "Build & Deploy",
+      "description": "Deploy existing dist/ to public/ without rebuilding",
+      "command": "bash scripts/deploy.sh --skip-build"
+    },
+    {
+      "id": "dev.server",
+      "title": "Start Dev Server",
+      "group": "Development",
+      "description": "Start the WebGit development server with file watching",
+      "command": "npm run dev"
+    },
+    {
+      "id": "start.server",
+      "title": "Start Server",
+      "group": "Development",
+      "description": "Start the WebGit production server",
+      "command": "npm start"
+    }
+  ]
+}

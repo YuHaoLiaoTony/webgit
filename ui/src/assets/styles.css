@@ -248,7 +248,9 @@ html, body {
 /* Commit Graph / List Container */
 .commit-list-container {
   flex: 1;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   position: relative;
 }
 

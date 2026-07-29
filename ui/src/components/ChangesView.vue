@@ -201,20 +201,21 @@ function commitChanges() {
   // Placeholder
 }
 
-// ─── Vertical resizer (unstaged / staged) ──────────────────────────────
-const unstagedRef = ref(null)
-const cvResizerRef = ref(null)
+// ─── Vertical resizer (staged panel) via staged header drag ────────────
+const stagedRef = ref(null)
+const stagedHeaderRef = ref(null)
 let isDraggingCV = false
 let cvStartY = 0
-let cvUnstagedHeight = 0
+let cvStagedHeight = 0
 
 function onCVResizerMouseDown(e) {
   isDraggingCV = true
   cvStartY = e.clientY
-  if (unstagedRef.value) cvUnstagedHeight = unstagedRef.value.offsetHeight
-  if (cvResizerRef.value) cvResizerRef.value.classList.add('dragging')
+  if (stagedRef.value) cvStagedHeight = stagedRef.value.offsetHeight
+  if (stagedHeaderRef.value) stagedHeaderRef.value.classList.add('dragging')
   document.body.style.cursor = 'row-resize'
   document.body.style.userSelect = 'none'
+  e.preventDefault()
 }
 
 // ─── Horizontal resizer (files / diff) ────────────────────────────────
@@ -234,16 +235,13 @@ function onHResizerMouseDown(e) {
 }
 
 function onGlobalMouseMove(e) {
-  if (isDraggingCV && unstagedRef.value) {
-    const deltaY = e.clientY - cvStartY
-    const newHeight = cvUnstagedHeight + deltaY
-    const container = unstagedRef.value.parentElement
-    if (container) {
-      const maxH = container.offsetHeight - 66
-      if (newHeight >= 60 && newHeight <= maxH) {
-        unstagedRef.value.style.flex = 'none'
-        unstagedRef.value.style.height = newHeight + 'px'
-      }
+  if (isDraggingCV && stagedRef.value) {
+    // deltaY = cvStartY - e.clientY: drag UP → positive → staged grows
+    const deltaY = cvStartY - e.clientY
+    const newHeight = cvStagedHeight + deltaY
+    if (newHeight >= 60) {
+      stagedRef.value.style.flex = 'none'
+      stagedRef.value.style.height = newHeight + 'px'
     }
   }
   if (isDraggingH && filesPanelRef.value) {
@@ -258,7 +256,7 @@ function onGlobalMouseMove(e) {
 function onGlobalMouseUp() {
   if (isDraggingCV) {
     isDraggingCV = false
-    if (cvResizerRef.value) cvResizerRef.value.classList.remove('dragging')
+    if (stagedHeaderRef.value) stagedHeaderRef.value.classList.remove('dragging')
   }
   if (isDraggingH) {
     isDraggingH = false
@@ -357,21 +355,18 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Vertical Resizer between Unstaged / Staged -->
-        <div
-          class="resizer-h"
-          ref="cvResizerRef"
-          style="cursor: row-resize; flex-shrink: 0;"
-          @mousedown="onCVResizerMouseDown"
-        ></div>
-
         <!-- === Staged Changes === -->
         <div
           class="cv-group"
           id="group-staged"
+          ref="stagedRef"
           style="flex: none; min-height: 60px; display: flex; flex-direction: column; overflow: hidden;"
         >
-          <div class="cv-group-header">
+          <div
+            class="cv-group-header"
+            ref="stagedHeaderRef"
+            @mousedown="onCVResizerMouseDown"
+          >
             <span>Staged Changes</span>
             <span class="cv-group-count">{{ mockStaged.length }}</span>
             <span
