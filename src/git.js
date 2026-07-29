@@ -407,20 +407,48 @@ export function createGitAPI(repoPath) {
       return { success: true };
     },
 
-    async pull(rebase = false) {
-      const options = rebase ? { '--rebase': null } : {};
-      const result = await git.pull(options);
+    async pull({ remote, remoteBranch, rebase = false, autostash = false } = {}) {
+      // Build args: [remote, remoteBranch, --rebase?, --autostash?]
+      const args = [];
+
+      if (remote) args.push(remote);
+      if (remoteBranch) args.push(remoteBranch);
+      if (rebase) args.push('--rebase');
+      if (autostash) args.push('--autostash');
+
+      const result = await git.pull(args);
       return { success: true, result };
     },
 
-    async push(force = false, setUpstream = false) {
-      const options = [];
-      if (force) options.push('--force');
-      if (setUpstream) {
-        const status = await git.status();
-        options.push('-u', 'origin', status.current);
+    async push({ remote = 'origin', branch = '', remoteBranch = '', force = false, tags = false } = {}) {
+      const args = [remote];
+
+      // <remote> <src>:<dst>
+      if (branch && remoteBranch) {
+        args.push(`${branch}:${remoteBranch}`);
+      } else if (branch) {
+        args.push(branch);
       }
-      await git.push(options);
+
+      if (tags) args.push('--tags');
+
+      if (force === 'force-with-lease') {
+        args.push('--force-with-lease');
+      } else if (force === true) {
+        args.push('--force');
+      }
+
+      // If no branch specified, push current branch to matching remote
+      if (!branch) {
+        try {
+          const status = await git.status();
+          args.push('-u', remote, status.current);
+        } catch (_) {
+          args.push('-u', remote, 'HEAD');
+        }
+      }
+
+      await git.push(args);
       return { success: true };
     },
 

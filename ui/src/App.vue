@@ -6,6 +6,8 @@ import ChangesView from './components/ChangesView.vue'
 import CommitGraph from './components/CommitGraph.vue'
 import DetailsPanel from './components/DetailsPanel.vue'
 import ToastNotification from './components/ToastNotification.vue'
+import PushDialog from './components/PushDialog.vue'
+import PullDialog from './components/PullDialog.vue'
 import { useUiStore } from './stores/ui.js'
 import { useReposStore } from './stores/repos.js'
 import { useStatusStore } from './stores/status.js'
@@ -49,6 +51,38 @@ const commitGraphRef = ref(null)
 const selectedCommit = computed(() => {
   return commitGraphRef.value?.selectedCommit || null
 })
+
+// ─── Push Dialog ───────────────────────────────────────────────────────
+const showPushDialog = ref(false)
+
+function openPushDialog() {
+  showPushDialog.value = true
+}
+
+function closePushDialog() {
+  showPushDialog.value = false
+}
+
+function onPushed() {
+  // Refresh status after push
+  statusStore.fetchStatus()
+}
+
+// ─── Pull Dialog ───────────────────────────────────────────────────────
+const showPullDialog = ref(false)
+
+function openPullDialog() {
+  showPullDialog.value = true
+}
+
+function closePullDialog() {
+  showPullDialog.value = false
+}
+
+function onPulled() {
+  // Refresh status after pull
+  statusStore.fetchStatus()
+}
 
 // Navigate to a parent commit by hash
 function handleNavigateToCommit(hash) {
@@ -136,11 +170,11 @@ onUnmounted(() => {
       <span class="toolbar-icon">⇣</span>
       <span class="toolbar-label">Fetch</span>
     </div>
-    <div class="toolbar-btn">
+    <div class="toolbar-btn" @click="openPullDialog">
       <span class="toolbar-icon">⬇</span>
       <span class="toolbar-label">Pull</span>
     </div>
-    <div class="toolbar-btn">
+    <div class="toolbar-btn" @click="openPushDialog">
       <span class="toolbar-icon">⬆</span>
       <span class="toolbar-label">Push</span>
     </div>
@@ -231,4 +265,18 @@ onUnmounted(() => {
 
   <!-- Toast Notifications (teleported to body) -->
   <ToastNotification />
+
+  <!-- Push Dialog -->
+  <PushDialog
+    :show="showPushDialog"
+    @close="closePushDialog"
+    @pushed="onPushed"
+  />
+
+  <!-- Pull Dialog -->
+  <PullDialog
+    :show="showPullDialog"
+    @close="closePullDialog"
+    @pulled="onPulled"
+  />
 </template>

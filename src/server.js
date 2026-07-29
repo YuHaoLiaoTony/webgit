@@ -275,8 +275,8 @@ export async function startServer(options = {}) {
   app.post('/api/pull', csrfProtection, async (req, res) => {
     try {
       const gitAPI = getGitAPI(req);
-      const { rebase } = req.body;
-      const result = await gitAPI.pull(rebase);
+      const { remote, remoteBranch, rebase, autostash } = req.body;
+      const result = await gitAPI.pull({ remote, remoteBranch, rebase, autostash });
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
@@ -286,8 +286,8 @@ export async function startServer(options = {}) {
   app.post('/api/push', csrfProtection, async (req, res) => {
     try {
       const gitAPI = getGitAPI(req);
-      const { force, setUpstream } = req.body;
-      const result = await gitAPI.push(force, setUpstream);
+      const { remote, branch, remoteBranch, force, tags } = req.body;
+      const result = await gitAPI.push({ remote, branch, remoteBranch, force, tags });
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
