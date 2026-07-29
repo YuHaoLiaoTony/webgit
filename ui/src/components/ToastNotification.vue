@@ -79,7 +79,8 @@ function onDismiss(id) {
 .toast-message {
   flex: 1;
   font-size: 12px;
-  line-height: 1.3;
+  line-height: 1.4;
+  white-space: pre-line;
 }
 
 .toast-close {

@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useApi } from '../composables/useApi.js'
 
 const props = defineProps({
   filePath: { type: String, required: true },
@@ -8,6 +9,79 @@ const props = defineProps({
   additions: { type: Number, default: 0 },
   deletions: { type: Number, default: 0 }
 })
+
+const api = useApi()
+const loading = ref(false)
+const error = ref(null)
+const realDiffData = ref(null)
+
+// Parse git diff text into structured hunk data
+function parseDiff(diffText) {
+  if (!diffText || typeof diffText !== 'string') {
+    return { hunks: [], additions: 0, deletions: 0 }
+  }
+
+  const lines = diffText.split('\n')
+  const hunks = []
+  let currentHunk = null
+  let oldLine = 0
+  let newLine = 0
+  let totalAdd = 0
+  let totalDel = 0
+
+  for (const line of lines) {
+    const hunkMatch = line.match(/^@@ -(\d+),?\d* \+(\d+),?\d* @@/)
+    if (hunkMatch) {
+      if (currentHunk) hunks.push(currentHunk)
+      oldLine = parseInt(hunkMatch[1])
+      newLine = parseInt(hunkMatch[2])
+      currentHunk = { header: line, lines: [] }
+      continue
+    }
+
+    if (!currentHunk) continue
+
+    if (line.startsWith('+')) {
+      currentHunk.lines.push({ type: 'add', oldNum: null, newNum: newLine++, content: line.slice(1) })
+      totalAdd++
+    } else if (line.startsWith('-')) {
+      currentHunk.lines.push({ type: 'del', oldNum: oldLine++, newNum: null, content: line.slice(1) })
+      totalDel++
+    } else if (line.startsWith('\\')) {
+      // No newline at end of file — skip or keep as context
+      currentHunk.lines.push({ type: 'context', oldNum: null, newNum: null, content: line })
+    } else {
+      // Context line (starts with space or is empty)
+      const content = line.startsWith(' ') ? line.slice(1) : line
+      currentHunk.lines.push({ type: 'context', oldNum: oldLine++, newNum: newLine++, content })
+    }
+  }
+
+  if (currentHunk) hunks.push(currentHunk)
+
+  return { hunks, additions: totalAdd, deletions: totalDel }
+}
+
+async function fetchDiff() {
+  if (!props.filePath) return
+  loading.value = true
+  error.value = null
+  try {
+    const staged = props.fileStatus === 'staged'
+    const raw = await api.get(`/diff?file=${encodeURIComponent(props.filePath)}&staged=${staged}`)
+    realDiffData.value = parseDiff(raw.diff || '')
+  } catch (e) {
+    error.value = e.message
+    realDiffData.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(() => props.filePath, () => {
+  realDiffData.value = null
+  fetchDiff()
+}, { immediate: false })
 
 // ─── Display mode ──────────────────────────────────────────────────────
 const displayMode = ref('inline') // 'inline' | 'side-by-side'
@@ -87,8 +161,8 @@ const defaultDiffData = {
   deletions: 3
 }
 
-// ─── Resolve diff data (use prop or default) ───────────────────────────
-const resolvedDiff = computed(() => props.diffData || defaultDiffData)
+// ─── Resolve diff data (real API data > prop > default mock) ───────────
+const resolvedDiff = computed(() => realDiffData.value || props.diffData || defaultDiffData)
 
 // ─── Compute total additions/deletions from resolved data ──────────────
 const totalAdditions = computed(() => props.additions || resolvedDiff.value.additions || 0)
@@ -161,8 +235,16 @@ const sideBySideLines = computed(() => {
       </span>
     </div>
 
+    <!-- Loading state -->
+    <div v-if="loading" style="padding: 20px; text-align: center; color: #888; font-size: 12px;">
+      Loading diff…
+    </div>
+    <div v-else-if="error" style="padding: 12px; color: #cb2431; font-size: 11px;">
+      ⚠️ {{ error }}
+    </div>
+
     <!-- Inline Mode -->
-    <template v-if="displayMode === 'inline'">
+    <template v-else-if="displayMode === 'inline'">
       <div
         v-for="(hunk, hIdx) in resolvedDiff.hunks"
         :key="'h' + hIdx"

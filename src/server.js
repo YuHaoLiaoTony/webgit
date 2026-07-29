@@ -86,15 +86,27 @@ export function startServer(options = {}) {
     let message = error.message || 'An error occurred';
 
     // Remove absolute paths
-    message = message.replace(/\/[\w\-./]+/g, '[path]');
-    message = message.replace(/[A-Z]:\\[\w\-\\/.]+/g, '[path]');
+    message = message.replace(/\/[\w\-./]+/g, '');
+    message = message.replace(/[A-Z]:\\[\w\-\\/.]+/g, '');
 
-    // Remove stack traces if present
-    message = message.split('\n')[0];
+    // Remove stack traces if present (lines starting with whitespace followed by "at ")
+    const lines = message.split('\n').filter(line => !/^\s+at\s/.test(line));
+
+    // For checkout conflict errors, keep the full message (file list etc.)
+    // Otherwise only keep first line
+    const isCheckoutConflict = lines.some(l => l.includes('would be overwritten by checkout'));
+    if (isCheckoutConflict) {
+      message = lines.join('\n');
+    } else {
+      message = lines[0] || 'An error occurred';
+    }
+
+    // Clean up git's "error: " prefix for readability
+    message = message.replace(/^error:\s*/gm, '');
 
     // Limit message length
-    if (message.length > 200) {
-      message = message.substring(0, 200) + '...';
+    if (message.length > 500) {
+      message = message.substring(0, 500) + '...';
     }
 
     return message;

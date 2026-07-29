@@ -202,7 +202,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Horizontal Splitter Bar for Details Panel -->
-      <div
+      <div v-if="uiStore.currentView !== 'changes'"
         class="resizer-h"
         ref="resizerHRef"
         id="resizerH"
@@ -210,7 +210,7 @@ onUnmounted(() => {
       ></div>
 
       <!-- Lower: Details Panel -->
-      <div class="details-panel" ref="detailsPanelRef" id="detailsPanel">
+      <div v-if="uiStore.currentView !== 'changes'" class="details-panel" ref="detailsPanelRef" id="detailsPanel">
         <DetailsPanel :selectedCommit="selectedCommit" />
       </div>
     </div>

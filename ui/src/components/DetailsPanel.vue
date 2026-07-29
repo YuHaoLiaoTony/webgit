@@ -43,6 +43,23 @@ const authorEmails = {
   cs: 'csigs@users.noreply.github.com',
 }
 
+// ─── Author info helper for real commits ───────────────────────────────
+function getAuthorName(author) {
+  if (!author) return 'Unknown'
+  return author.name || 'Unknown'
+}
+
+function getAuthorEmail(author) {
+  if (!author) return ''
+  return author.email || ''
+}
+
+function getAuthorColor(author) {
+  if (!author) return '#888'
+  const initial = (author.name || '?').charAt(0).toUpperCase()
+  return authorColors[initial] || '#4a90e2'
+}
+
 const commitDetailMap = {
   1: {
     shortHash: 'ee57040',
@@ -221,18 +238,40 @@ const commitDetailMap = {
 // ─── Derived commit detail ─────────────────────────────────────────────
 const commitDetail = computed(() => {
   if (!props.selectedCommit) return null
-  return commitDetailMap[props.selectedCommit.id] || null
+  const mock = commitDetailMap[props.selectedCommit.id]
+  if (mock) return mock
+  // Real commit from API — construct detail from available data
+  return {
+    shortHash: props.selectedCommit.hash || props.selectedCommit.fullHash?.substring(0, 7),
+    sha: props.selectedCommit.fullHash || props.selectedCommit.id,
+    authorId: (props.selectedCommit.author?.name || '?').charAt(0).toUpperCase(),
+    date: props.selectedCommit.date || '',
+    title: props.selectedCommit.subject || '(no message)',
+    body: '',
+    files: [],
+  }
 })
 
 // ─── Author info ───────────────────────────────────────────────────────
 const authorInfo = computed(() => {
   if (!commitDetail.value) return null
   const id = commitDetail.value.authorId
+  // Check if mock data has this author
+  if (authorNames[id]) {
+    return {
+      initials: id,
+      name: authorNames[id],
+      email: authorEmails[id],
+      color: authorColors[id] || '#888',
+    }
+  }
+  // Real commit author
+  const commitAuthor = props.selectedCommit?.author
   return {
-    initials: id,
-    name: authorNames[id] || id,
-    email: authorEmails[id] || `${id.toLowerCase()}@example.com`,
-    color: authorColors[id] || '#888',
+    initials: commitAuthor?.initials || id,
+    name: getAuthorName(commitAuthor),
+    email: getAuthorEmail(commitAuthor),
+    color: getAuthorColor(commitAuthor),
   }
 })
 

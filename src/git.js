@@ -117,21 +117,55 @@ export function createGitAPI(repoPath) {
         }
       }
 
+      // --- Build new flat format ---
+      const stagedSet = new Set(status.staged);
+
+      // unstaged: modified/created/deleted NOT in staged, plus untracked as 'added'
+      const unstaged = [
+        ...status.modified
+          .filter(p => !stagedSet.has(p))
+          .map(p => ({ path: p, status: 'modified' })),
+        ...status.created
+          .filter(p => !stagedSet.has(p))
+          .map(p => ({ path: p, status: 'added' })),
+        ...status.deleted
+          .filter(p => !stagedSet.has(p))
+          .map(p => ({ path: p, status: 'deleted' })),
+        ...status.not_added.map(p => ({ path: p, status: 'added' })),
+      ];
+
+      // staged: from status.staged, determine change type
+      const staged = status.staged.map(p => {
+        let changeType = 'modified';
+        if (status.created.includes(p)) {
+          changeType = 'added';
+        } else if (status.deleted.includes(p)) {
+          changeType = 'deleted';
+        } else if (status.modified.includes(p)) {
+          changeType = 'modified';
+        }
+        return { path: p, status: changeType };
+      });
+
+      // renamed: add entries where r.to is NOT already in status.staged (dedup)
+      for (const r of status.renamed) {
+        if (!stagedSet.has(r.to)) {
+          staged.push({ path: r.to, status: 'renamed', originalPath: r.from });
+        }
+      }
+
+      // conflicted
+      const conflicted = status.conflicted.map(p => ({ path: p, status: 'conflicted' }));
+
       return {
         current: status.current,
-        tracking: status.tracking,
+        tracking: status.tracking || '',
         ahead,
         behind,
-        files: {
-          modified: status.modified,
-          added: status.created,
-          deleted: status.deleted,
-          untracked: status.not_added,
-          staged: status.staged,
-          renamed: status.renamed,
-          conflicted: status.conflicted
-        },
-        isClean: status.isClean()
+        isClean: status.isClean(),
+        unstaged,
+        staged,
+        conflicted,
       };
     },
 

@@ -1,30 +1,14 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStatusStore } from '../stores/status.js'
 import DiffViewer from './DiffViewer.vue'
 
 const statusStore = useStatusStore()
 
-// ─── Mock data ──────────────────────────────────────────────────────────
-const mockUnstaged = [
-  { path: 'README.md', status: 'modified', additions: 2, deletions: 2 },
-  { path: 'src/compiler/scanner.ts', status: 'modified', additions: 3, deletions: 1 },
-  { path: 'src/experimental/newFeature.ts', status: 'added', additions: 8, deletions: 0 },
-  { path: 'src/legacy/deprecated.ts', status: 'deleted', additions: 0, deletions: 45 },
-  { path: 'src/loc/lcl/deu/diagnosticMessages/diagnosticMessages.generated.json.lcl', status: 'added', additions: 92, deletions: 0 },
-  { path: 'src/loc/lcl/fra/diagnosticMessages/diagnosticMessages.generated.json.lcl', status: 'modified', additions: 89, deletions: 12 },
-  { path: 'src/loc/lcl/ita/diagnosticMessages/diagnosticMessages.generated.json.lcl', status: 'modified', additions: 65, deletions: 15 },
-  { path: 'src/shared/helpers.ts', status: 'renamed', additions: 5, deletions: 0 },
-]
-
-const mockStaged = [
-  { path: 'src/compiler/checker.ts', status: 'modified', additions: 12, deletions: 4 },
-  { path: 'src/compiler/newModule.ts', status: 'added', additions: 89, deletions: 0 },
-  { path: 'src/services/completions.ts', status: 'modified', additions: 5, deletions: 1 },
-]
-
-// Combine for badge count
-const allMockFiles = computed(() => [...mockUnstaged, ...mockStaged])
+// ─── Badge count ──────────────────────────────────────────────────────
+const totalChanged = computed(() => statusStore.totalChanges)
+const unstageCount = computed(() => statusStore.unstagedFiles.length)
+const stageCount = computed(() => statusStore.stagedFiles.length)
 
 // ─── Status label / style maps ─────────────────────────────────────────
 const statusLabelMap = { added: 'C', modified: 'U', deleted: 'D', renamed: 'M', staged: 'A' }
@@ -92,13 +76,10 @@ function buildFlatTree(files) {
     // Remove parent itself
     childDirs.delete(parentPath)
 
-    // Sort and add dirs
+    // Sort and add dirs (recursively via addDir)
     const sortedDirs = [...childDirs].sort()
     for (const d of sortedDirs) {
-      if (!addedDirs.has(d)) {
-        addedDirs.add(d)
-        items.push({ type: 'dir', path: d, depth, name: d.split('/').pop() + '/' })
-      }
+      addDir(d, depth)
     }
 
     // Sort and add files
@@ -114,12 +95,110 @@ function buildFlatTree(files) {
 }
 
 // ─── State ─────────────────────────────────────────────────────────────
-const unstagedFlatItems = computed(() => buildFlatTree(mockUnstaged))
-const stagedFlatItems = computed(() => buildFlatTree(mockStaged))
+// Real data from the status store, not mock data
+const unstagedFiles = computed(() => {
+  const files = statusStore.unstagedFiles
+  return files.map(f => ({ ...f, additions: 0, deletions: 0 }))
+})
+const stagedFiles = computed(() => {
+  const files = statusStore.stagedFiles
+  return files.map(f => ({ ...f, additions: 0, deletions: 0 }))
+})
+
+// Combine all files for the total badge
+const allChangedFiles = computed(() => [
+  ...unstagedFiles.value,
+  ...stagedFiles.value,
+])
+
+const unstagedFlatItems = computed(() => buildFlatTree(unstagedFiles.value))
+const stagedFlatItems = computed(() => buildFlatTree(stagedFiles.value))
 
 const selectedFile = ref(null)
 const checkedFiles = reactive(new Set())
 const collapsedDirs = reactive(new Set())
+
+// ─── Commit dialog ────────────────────────────────────────────────────
+const showCommitDialog = ref(false)
+const commitMessage = ref('')
+const committing = ref(false)
+const commitError = ref(null)
+const commitInputRef = ref(null)
+
+async function handleCommit() {
+  if (!commitMessage.value.trim()) {
+    commitError.value = 'Commit message is required'
+    return
+  }
+  committing.value = true
+  commitError.value = null
+  try {
+    await statusStore.commit(commitMessage.value.trim())
+    commitMessage.value = ''
+    showCommitDialog.value = false
+  } catch (e) {
+    commitError.value = e.message
+  } finally {
+    committing.value = false
+  }
+}
+
+function openCommitDialog() {
+  if (statusStore.stagedFiles.length === 0) {
+    // Could show a toast or other feedback
+    return
+  }
+  showCommitDialog.value = true
+  commitMessage.value = ''
+  commitError.value = null
+  nextTick(() => {
+    commitInputRef.value?.focus()
+  })
+}
+
+function closeCommitDialog() {
+  showCommitDialog.value = false
+  commitMessage.value = ''
+  commitError.value = null
+}
+
+// ─── Discard ──────────────────────────────────────────────────────────
+const showDiscardConfirm = ref(false)
+const discarding = ref(false)
+
+function openDiscardConfirm() {
+  showDiscardConfirm.value = true
+}
+
+function closeDiscardConfirm() {
+  showDiscardConfirm.value = false
+}
+
+async function handleDiscard() {
+  discarding.value = true
+  try {
+    const files = [...checkedFiles]
+    await statusStore.discardFiles(files.length > 0 ? files : undefined)
+    checkedFiles.clear()
+    selectedFile.value = null
+    showDiscardConfirm.value = false
+  } catch (e) {
+    // error handled by store
+  } finally {
+    discarding.value = false
+  }
+}
+
+// ─── Keyboard shortcut: Ctrl+Enter to commit ─────────────────────────
+function onKeydown(e) {
+  if (showCommitDialog.value && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    handleCommit()
+  }
+  if (e.key === 'Escape') {
+    closeCommitDialog()
+    closeDiscardConfirm()
+  }
+}
 
 function toggleDir(dirPath) {
   if (collapsedDirs.has(dirPath)) {
@@ -176,7 +255,7 @@ function isChecked(file) {
 // ─── Actions ───────────────────────────────────────────────────────────
 function stageSelected() {
   const files = [...checkedFiles].filter(p =>
-    mockUnstaged.some(f => f.path === p)
+    unstagedFiles.value.some(f => f.path === p)
   )
   if (files.length > 0) {
     statusStore.stageFiles(files)
@@ -185,7 +264,7 @@ function stageSelected() {
 
 function unstageSelected() {
   const files = [...checkedFiles].filter(p =>
-    mockStaged.some(f => f.path === p)
+    stagedFiles.value.some(f => f.path === p)
   )
   if (files.length > 0) {
     statusStore.unstageFiles(files)
@@ -193,12 +272,12 @@ function unstageSelected() {
 }
 
 function stageAll() {
-  const paths = mockUnstaged.map(f => f.path)
+  const paths = unstagedFiles.value.map(f => f.path)
   statusStore.stageFiles(paths)
 }
 
 function commitChanges() {
-  // Placeholder
+  openCommitDialog()
 }
 
 // ─── Vertical resizer (staged panel) via staged header drag ────────────
@@ -269,11 +348,26 @@ function onGlobalMouseUp() {
 onMounted(() => {
   document.addEventListener('mousemove', onGlobalMouseMove)
   document.addEventListener('mouseup', onGlobalMouseUp)
+  document.addEventListener('keydown', onKeydown)
+
+  // Fetch status from the real API
+  statusStore.fetchStatus()
+
+  // Set staged panel to ~50% of files panel height by default
+  nextTick(() => {
+    if (filesPanelRef.value && stagedRef.value) {
+      const panelHeight = filesPanelRef.value.offsetHeight
+      const halfHeight = Math.max(Math.floor(panelHeight * 0.5), 60)
+      stagedRef.value.style.flex = 'none'
+      stagedRef.value.style.height = halfHeight + 'px'
+    }
+  })
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', onGlobalMouseMove)
   document.removeEventListener('mouseup', onGlobalMouseUp)
+  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -282,10 +376,11 @@ onUnmounted(() => {
     <!-- Toolbar -->
     <div class="changes-view-toolbar">
       <span class="changes-view-title">📝 Uncommitted Changes</span>
-      <span class="changes-view-badge">{{ allMockFiles.length }} files changed</span>
+      <span class="changes-view-badge">{{ allChangedFiles.length }} file{{ allChangedFiles.length !== 1 ? 's' : '' }} changed</span>
       <div class="changes-view-actions">
         <button class="changes-view-btn" @click="stageSelected">Stage</button>
         <button class="changes-view-btn" @click="unstageSelected">Unstage</button>
+        <button class="changes-view-btn danger" @click="openDiscardConfirm">Discard</button>
         <button class="changes-view-btn" @click="stageAll">Stage All</button>
         <button class="changes-view-btn primary" @click="commitChanges">Commit…</button>
       </div>
@@ -305,7 +400,7 @@ onUnmounted(() => {
         >
           <div class="cv-group-header">
             <span>Unstaged Changes</span>
-            <span class="cv-group-count">{{ mockUnstaged.length }}</span>
+            <span class="cv-group-count">{{ unstagedFiles.length }}</span>
             <span
               class="changes-view-btn"
               style="margin-left: auto; padding: 1px 8px; font-size: 10px;"
@@ -343,9 +438,9 @@ onUnmounted(() => {
                 </span>
                 <span class="tree-icon tree-icon-file">📄</span>
                 <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.fileName }}</span>
-                <span v-if="item.additions > 0 || item.deletions > 0" class="tree-file-stats">
-                  <span v-if="item.additions > 0" class="add">+{{ item.additions }}</span>
-                  <span v-if="item.deletions > 0" class="del">-{{ item.deletions }}</span>
+                <span v-if="item.additions || item.deletions" class="tree-file-stats">
+                  <span v-if="item.additions" class="add">+{{ item.additions }}</span>
+                  <span v-if="item.deletions" class="del">-{{ item.deletions }}</span>
                 </span>
               </div>
             </template>
@@ -368,7 +463,7 @@ onUnmounted(() => {
             @mousedown="onCVResizerMouseDown"
           >
             <span>Staged Changes</span>
-            <span class="cv-group-count">{{ mockStaged.length }}</span>
+            <span class="cv-group-count">{{ stagedFiles.length }}</span>
             <span
               class="changes-view-btn"
               style="margin-left: auto; padding: 1px 8px; font-size: 10px;"
@@ -406,9 +501,9 @@ onUnmounted(() => {
                 </span>
                 <span class="tree-icon tree-icon-file">📄</span>
                 <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.fileName }}</span>
-                <span v-if="item.additions > 0 || item.deletions > 0" class="tree-file-stats">
-                  <span v-if="item.additions > 0" class="add">+{{ item.additions }}</span>
-                  <span v-if="item.deletions > 0" class="del">-{{ item.deletions }}</span>
+                <span v-if="item.additions || item.deletions" class="tree-file-stats">
+                  <span v-if="item.additions" class="add">+{{ item.additions }}</span>
+                  <span v-if="item.deletions" class="del">-{{ item.deletions }}</span>
                 </span>
               </div>
             </template>
@@ -440,5 +535,218 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Commit Dialog Modal -->
+    <Teleport to="body">
+      <div v-if="showCommitDialog" class="commit-overlay" @click.self="closeCommitDialog">
+        <div class="commit-dialog">
+          <div class="commit-dialog-header">
+            <span>Commit Changes</span>
+            <span class="commit-dialog-close" @click="closeCommitDialog">×</span>
+          </div>
+          <div class="commit-dialog-body">
+            <div class="commit-dialog-files">
+              <div class="commit-files-title">{{ stageCount }} file(s) staged</div>
+              <div v-for="f in stagedFiles" :key="f.path" class="commit-file-item">
+                <span :class="['cv-file-status', statusCssMap[f.status]]">{{ statusLabelMap[f.status] }}</span>
+                <span>{{ f.path }}</span>
+              </div>
+            </div>
+            <textarea
+              v-model="commitMessage"
+              class="commit-message-input"
+              placeholder="Commit message…"
+              rows="3"
+              @keydown.ctrl.enter="handleCommit"
+              @keydown.meta.enter="handleCommit"
+              ref="commitInputRef"
+            ></textarea>
+            <div v-if="commitError" class="commit-error">{{ commitError }}</div>
+          </div>
+          <div class="commit-dialog-footer">
+            <button class="changes-view-btn" @click="closeCommitDialog">Cancel</button>
+            <button
+              class="changes-view-btn primary"
+              :disabled="committing || !commitMessage.trim()"
+              @click="handleCommit"
+            >
+              {{ committing ? 'Committing…' : 'Commit' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Discard Confirmation Dialog -->
+    <Teleport to="body">
+      <div v-if="showDiscardConfirm" class="commit-overlay" @click.self="closeDiscardConfirm">
+        <div class="commit-dialog discard-dialog">
+          <div class="commit-dialog-header">
+            <span>⚠️ Discard Changes</span>
+          </div>
+          <div class="commit-dialog-body">
+            <p style="margin: 0 0 8px; font-size: 13px; color: #333;">
+              Are you sure you want to discard changes?
+            </p>
+            <p style="margin: 0; font-size: 11px; color: #cb2431;">
+              This action is irreversible. Discarded changes cannot be recovered.
+            </p>
+            <div v-if="checkedFiles.size > 0" style="margin-top: 8px; font-size: 11px; color: #666;">
+              Selected files ({{ checkedFiles.size }}):
+              <div v-for="p in checkedFiles" :key="p" style="padding-left: 8px;">• {{ p }}</div>
+            </div>
+            <div v-else style="margin-top: 8px; font-size: 11px; color: #888;">
+              All unstaged changes will be discarded.
+            </div>
+          </div>
+          <div class="commit-dialog-footer">
+            <button class="changes-view-btn" @click="closeDiscardConfirm">Cancel</button>
+            <button
+              class="changes-view-btn danger"
+              :disabled="discarding"
+              @click="handleDiscard"
+            >
+              {{ discarding ? 'Discarding…' : 'Discard' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* ── Commit Dialog ────────────────────────────────────────────────── */
+.commit-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.commit-dialog {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.discard-dialog {
+  width: 400px;
+}
+
+.commit-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-weight: bold;
+  font-size: 13px;
+  color: #333;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.commit-dialog-close {
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.commit-dialog-close:hover {
+  color: #333;
+}
+
+.commit-dialog-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.commit-dialog-files {
+  margin-bottom: 12px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.commit-files-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.commit-file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-family: "SF Mono", Consolas, monospace;
+  color: #555;
+}
+
+.commit-message-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 64px;
+  outline: none;
+}
+
+.commit-message-input:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+.commit-error {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background-color: #fff0f0;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #cb2431;
+  font-size: 11px;
+}
+
+.commit-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #e8e8e8;
+  background-color: #fafafa;
+}
+
+/* ── Danger button ────────────────────────────────────────────────── */
+.changes-view-btn.danger {
+  background-color: #cb2431;
+  color: #fff;
+  border-color: #b01e2b;
+}
+
+.changes-view-btn.danger:hover {
+  background-color: #b01e2b;
+}
+
+.changes-view-btn.danger:disabled {
+  background-color: #e8a0a5;
+  cursor: not-allowed;
+}
+</style>

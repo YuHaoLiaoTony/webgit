@@ -5,6 +5,7 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)
   const currentView = ref('changes')
   const theme = ref(localStorage.getItem('theme') || 'light')
+  const commitRefreshKey = ref(0)
 
   function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
@@ -19,6 +20,10 @@ export const useUiStore = defineStore('ui', () => {
     localStorage.setItem('theme', value)
   }
 
+  function triggerCommitRefresh() {
+    commitRefreshKey.value++
+  }
+
   const isDark = computed(() => theme.value === 'dark')
 
   return {
@@ -26,8 +31,10 @@ export const useUiStore = defineStore('ui', () => {
     currentView,
     theme,
     isDark,
+    commitRefreshKey,
     toggleSidebar,
     setView,
     setTheme,
+    triggerCommitRefresh,
   }
 })

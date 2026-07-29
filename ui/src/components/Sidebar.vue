@@ -1,8 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useUiStore } from '../stores/ui.js'
+import { useStatusStore } from '../stores/status.js'
+import { useApi } from '../composables/useApi.js'
+import { showToast } from '../composables/useToast.js'
 
 const uiStore = useUiStore()
+const statusStore = useStatusStore()
 
 // Collapsible groups state
 const collapsedGroups = ref({
@@ -19,20 +23,49 @@ function toggleGroup(group) {
 }
 
 // Branch selection
-const selectedBranch = ref('master')
+const selectedBranch = ref('')
 
 function selectBranch(name) {
   selectedBranch.value = name
 }
 
-// Branches data
-const starredBranch = { name: 'master', icon: '✓', starred: true }
-const branches = [
-  { name: 'editor-support-for-links', icon: '🌿' },
-  { name: 'improve-uncalled-func...', icon: '🌿' },
-  { name: 'master', icon: '✓' },
-  { name: 'release-4.1', icon: '🌿' },
-]
+async function switchToBranch(name) {
+  try {
+    const { post } = useApi()
+    await post('/branches/checkout', { branch: name })
+    // Refresh sidebar state
+    selectedBranch.value = name
+    await fetchBranches()
+    await statusStore.fetchStatus()
+    // Switch right side to All Commits and trigger reload
+    uiStore.setView('commits')
+    uiStore.triggerCommitRefresh()
+  } catch (e) {
+    showToast('error', e.message, 6000)
+  }
+}
+
+// Real branches from API
+const branchesData = ref({ local: [], remote: [], current: '' })
+const loadingBranches = ref(true)
+
+async function fetchBranches() {
+  try {
+    const { get } = useApi()
+    const data = await get('/branches')
+    branchesData.value = data
+    selectedBranch.value = data.current
+  } catch (e) {
+    console.error('Failed to fetch branches:', e)
+  } finally {
+    loadingBranches.value = false
+  }
+}
+
+onMounted(() => {
+  fetchBranches()
+  statusStore.fetchStatus()
+})
 </script>
 
 <template>
@@ -47,7 +80,7 @@ const branches = [
     :class="{ selected: uiStore.currentView === 'changes' }"
     @click="uiStore.setView('changes')"
   >
-    <span>📝</span> Changes (11)
+    <span>📝</span> Changes ({{ statusStore.totalChanges }})
   </div>
   <div
     class="sidebar-item"
@@ -69,11 +102,12 @@ const branches = [
   </div>
   <template v-if="!collapsedGroups.starred">
     <div
+      v-if="branchesData.current"
       class="sidebar-item"
-      :class="{ selected: selectedBranch === starredBranch.name }"
-      @click="selectBranch(starredBranch.name)"
+      :class="{ selected: selectedBranch === branchesData.current }"
+      @click="switchToBranch(branchesData.current)"
     >
-      <span>{{ starredBranch.icon }} {{ starredBranch.name }}</span>
+      <span>✓ {{ branchesData.current }}</span>
       <span style="margin-left: auto; color: #ffca28;">☆</span>
     </div>
   </template>
@@ -83,14 +117,20 @@ const branches = [
     <span>{{ collapsedGroups.branches ? '▸' : '▾' }} Branches</span>
   </div>
   <template v-if="!collapsedGroups.branches">
+    <div v-if="loadingBranches" class="sidebar-item" style="color: #999; font-style: italic;">
+      <span>Loading...</span>
+    </div>
     <div
-      v-for="branch in branches"
-      :key="branch.name"
+      v-for="branch in branchesData.local"
+      :key="branch"
       class="sidebar-item"
-      :class="{ selected: selectedBranch === branch.name }"
-      @click="selectBranch(branch.name)"
+      :class="{ selected: selectedBranch === branch }"
+      @click="switchToBranch(branch)"
     >
-      <span>{{ branch.icon }} {{ branch.name }}</span>
+      <span>{{ branch === branchesData.current ? '✓' : '🌿' }} {{ branch }}</span>
+    </div>
+    <div v-if="!loadingBranches && branchesData.local.length === 0" class="sidebar-item" style="color: #999;">
+      <span>No branches</span>
     </div>
   </template>
 
@@ -98,6 +138,19 @@ const branches = [
   <div class="sidebar-group-title" @click="toggleGroup('remotes')">
     <span>{{ collapsedGroups.remotes ? '▸' : '▾' }} Remotes</span>
   </div>
+  <template v-if="!collapsedGroups.remotes">
+    <div
+      v-for="remote in branchesData.remote"
+      :key="remote"
+      class="sidebar-item"
+      @click="switchToBranch(remote)"
+    >
+      <span>📡 {{ remote }}</span>
+    </div>
+    <div v-if="branchesData.remote.length === 0" class="sidebar-item" style="color: #999;">
+      <span>No remotes</span>
+    </div>
+  </template>
 
   <!-- Tags -->
   <div class="sidebar-group-title" @click="toggleGroup('tags')">
