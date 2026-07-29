@@ -1292,6 +1292,14 @@ html, body {
   min-height: 60px;
 }
 
+.changes-view-right {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .changes-view-diff {
   flex: 1;
   overflow-y: auto;

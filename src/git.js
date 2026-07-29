@@ -437,6 +437,20 @@ export function createGitAPI(repoPath) {
       };
     },
 
+    async resetBranch(hash, mode = 'mixed') {
+      validateCommitHash(hash);
+
+      const validModes = ['soft', 'mixed', 'hard', 'merge', 'keep'];
+      if (!validModes.includes(mode)) {
+        throw new Error(`Invalid reset mode '${mode}'. Valid modes: ${validModes.join(', ')}`);
+      }
+
+      const args = [`--${mode}`, hash];
+      await git.reset(args);
+
+      return { success: true, hash, mode };
+    },
+
     async setConfig(key, value) {
       // Whitelist of allowed config keys to prevent command injection
       const allowedKeys = [

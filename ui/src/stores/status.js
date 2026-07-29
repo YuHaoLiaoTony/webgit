@@ -61,8 +61,9 @@ export const useStatusStore = defineStore('status', {
       await this.fetchStatus()
     },
 
-    async commit(message) {
+    async commit({ title, body } = {}) {
       const { post } = useApi()
+      const message = body ? `${title}\n\n${body}` : title
       const result = await post('/commit', { message })
       await this.fetchStatus()
       return result

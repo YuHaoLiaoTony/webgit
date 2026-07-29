@@ -279,6 +279,16 @@ export function startServer(options = {}) {
     }
   });
 
+  app.post('/api/reset', csrfProtection, async (req, res) => {
+    try {
+      const { hash, mode } = req.body;
+      const result = await gitAPI.resetBranch(hash, mode || 'mixed');
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   app.post('/api/config', csrfProtection, async (req, res) => {
     try {
       const { key, value } = req.body;

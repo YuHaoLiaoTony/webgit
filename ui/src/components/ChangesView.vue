@@ -115,8 +115,9 @@ const unstagedFlatItems = computed(() => buildFlatTree(unstagedFiles.value))
 const stagedFlatItems = computed(() => buildFlatTree(stagedFiles.value))
 
 const selectedFile = ref(null)
+const selectedDir = ref(null)
 const checkedFiles = reactive(new Set())
-const collapsedDirs = reactive(new Set())
+const collapsedDirs = reactive({ unstaged: new Set(), staged: new Set() })
 
 // ─── Commit dialog ────────────────────────────────────────────────────
 const showCommitDialog = ref(false)
@@ -124,6 +125,29 @@ const commitMessage = ref('')
 const committing = ref(false)
 const commitError = ref(null)
 const commitInputRef = ref(null)
+
+// ─── Inline commit (below diff) ───────────────────────────────────────
+const commitTitle = ref('')
+const commitBody = ref('')
+const inlineCommitting = ref(false)
+const inlineCommitError = ref(null)
+
+const isCommitDisabled = computed(() => inlineCommitting.value || !commitTitle.value.trim())
+
+async function handleInlineCommit() {
+  if (!commitTitle.value.trim()) return
+  inlineCommitting.value = true
+  inlineCommitError.value = null
+  try {
+    await statusStore.commit({ title: commitTitle.value.trim(), body: commitBody.value.trim() })
+    commitTitle.value = ''
+    commitBody.value = ''
+  } catch (e) {
+    inlineCommitError.value = e.message
+  } finally {
+    inlineCommitting.value = false
+  }
+}
 
 async function handleCommit() {
   if (!commitMessage.value.trim()) {
@@ -133,7 +157,7 @@ async function handleCommit() {
   committing.value = true
   commitError.value = null
   try {
-    await statusStore.commit(commitMessage.value.trim())
+    await statusStore.commit({ title: commitMessage.value.trim() })
     commitMessage.value = ''
     showCommitDialog.value = false
   } catch (e) {
@@ -200,42 +224,61 @@ function onKeydown(e) {
   }
 }
 
-function toggleDir(dirPath) {
-  if (collapsedDirs.has(dirPath)) {
-    collapsedDirs.delete(dirPath)
-  } else {
-    collapsedDirs.add(dirPath)
+// Ctrl+Enter also triggers inline commit
+function onDiffKeydown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    handleInlineCommit()
   }
 }
 
-function isDirOpen(dirPath) {
-  return !collapsedDirs.has(dirPath)
+function toggleDir(dirPath, group) {
+  const set = collapsedDirs[group]
+  if (set.has(dirPath)) {
+    set.delete(dirPath)
+  } else {
+    set.add(dirPath)
+  }
+  selectedDir.value = dirPath
+  selectedFile.value = null
 }
 
-function isDirCollapsed(dirPath) {
-  // Check if any file/dir under this path exists but is collapsed
-  return collapsedDirs.has(dirPath)
+function isDirOpen(dirPath, group) {
+  return !collapsedDirs[group].has(dirPath)
 }
 
-function shouldShowItem(item, items) {
+function isDirCollapsed(dirPath, group) {
+  return collapsedDirs[group].has(dirPath)
+}
+
+function shouldShowItem(item, group) {
   if (item.type === 'file' || item.type === 'dir') {
-    // Walk up path segments to check if any parent is collapsed
+    const set = collapsedDirs[group]
     const parts = item.path.split('/')
     for (let i = 1; i < parts.length; i++) {
       const parentPath = parts.slice(0, i).join('/')
-      if (collapsedDirs.has(parentPath)) return false
+      if (set.has(parentPath)) return false
     }
     return true
   }
   return true
 }
 
-const visibleUnstagedItems = computed(() => unstagedFlatItems.value.filter(item => shouldShowItem(item)))
-const visibleStagedItems = computed(() => stagedFlatItems.value.filter(item => shouldShowItem(item)))
+const visibleUnstagedItems = computed(() => unstagedFlatItems.value.filter(item => shouldShowItem(item, 'unstaged')))
+const visibleStagedItems = computed(() => stagedFlatItems.value.filter(item => shouldShowItem(item, 'staged')))
 
 // ─── File selection ────────────────────────────────────────────────────
 function selectFile(file) {
   selectedFile.value = file
+  selectedDir.value = null
+}
+
+// ─── Double-click: stage/unstage single file ──────────────────────────
+function onFileDblClick(file, group) {
+  if (group === 'unstaged') {
+    statusStore.stageFiles([file.path])
+  } else if (group === 'staged') {
+    statusStore.unstageFiles([file.path])
+  }
 }
 
 // ─── Checkbox toggle ───────────────────────────────────────────────────
@@ -252,22 +295,47 @@ function isChecked(file) {
   return checkedFiles.has(file.path)
 }
 
+// ─── Helper: collect all file paths under a dir ────────────────────────
+function getFilesUnderDir(files, dirPath) {
+  return files
+    .filter(f => f.path === dirPath || f.path.startsWith(dirPath + '/'))
+    .map(f => f.path)
+}
+
 // ─── Actions ───────────────────────────────────────────────────────────
 function stageSelected() {
-  const files = [...checkedFiles].filter(p =>
+  // Priority: checked files > selected file > selected directory > all unstaged
+  const checked = [...checkedFiles].filter(p =>
     unstagedFiles.value.some(f => f.path === p)
   )
-  if (files.length > 0) {
-    statusStore.stageFiles(files)
+  if (checked.length > 0) {
+    statusStore.stageFiles(checked)
+  } else if (selectedFile.value && unstagedFiles.value.some(f => f.path === selectedFile.value.path)) {
+    statusStore.stageFiles([selectedFile.value.path])
+  } else if (selectedDir.value) {
+    const paths = getFilesUnderDir(unstagedFiles.value, selectedDir.value)
+    if (paths.length > 0) statusStore.stageFiles(paths)
+  } else {
+    const paths = unstagedFiles.value.map(f => f.path)
+    if (paths.length > 0) statusStore.stageFiles(paths)
   }
 }
 
 function unstageSelected() {
-  const files = [...checkedFiles].filter(p =>
+  // Priority: checked files > selected file > selected directory > all staged
+  const checked = [...checkedFiles].filter(p =>
     stagedFiles.value.some(f => f.path === p)
   )
-  if (files.length > 0) {
-    statusStore.unstageFiles(files)
+  if (checked.length > 0) {
+    statusStore.unstageFiles(checked)
+  } else if (selectedFile.value && stagedFiles.value.some(f => f.path === selectedFile.value.path)) {
+    statusStore.unstageFiles([selectedFile.value.path])
+  } else if (selectedDir.value) {
+    const paths = getFilesUnderDir(stagedFiles.value, selectedDir.value)
+    if (paths.length > 0) statusStore.unstageFiles(paths)
+  } else {
+    const paths = stagedFiles.value.map(f => f.path)
+    if (paths.length > 0) statusStore.unstageFiles(paths)
   }
 }
 
@@ -292,6 +360,23 @@ function onCVResizerMouseDown(e) {
   cvStartY = e.clientY
   if (stagedRef.value) cvStagedHeight = stagedRef.value.offsetHeight
   if (stagedHeaderRef.value) stagedHeaderRef.value.classList.add('dragging')
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+  e.preventDefault()
+}
+
+// ─── Commit panel drag resizer ────────────────────────────────────────
+const commitPanelRef = ref(null)
+const commitHeaderRef = ref(null)
+let isDraggingCommit = false
+let commitDragStartY = 0
+let commitStartHeight = 0
+
+function onCommitResizerMouseDown(e) {
+  isDraggingCommit = true
+  commitDragStartY = e.clientY
+  if (commitPanelRef.value) commitStartHeight = commitPanelRef.value.offsetHeight
+  if (commitHeaderRef.value) commitHeaderRef.value.classList.add('dragging')
   document.body.style.cursor = 'row-resize'
   document.body.style.userSelect = 'none'
   e.preventDefault()
@@ -330,6 +415,15 @@ function onGlobalMouseMove(e) {
       filesPanelRef.value.style.width = newWidth + 'px'
     }
   }
+  if (isDraggingCommit && commitPanelRef.value) {
+    // deltaY = commitDragStartY - e.clientY: drag UP → positive → commit panel grows
+    const deltaY = commitDragStartY - e.clientY
+    const newHeight = commitStartHeight + deltaY
+    if (newHeight >= 80) {
+      commitPanelRef.value.style.flex = 'none'
+      commitPanelRef.value.style.height = newHeight + 'px'
+    }
+  }
 }
 
 function onGlobalMouseUp() {
@@ -340,6 +434,10 @@ function onGlobalMouseUp() {
   if (isDraggingH) {
     isDraggingH = false
     if (hResizerRef.value) hResizerRef.value.classList.remove('dragging')
+  }
+  if (isDraggingCommit) {
+    isDraggingCommit = false
+    if (commitHeaderRef.value) commitHeaderRef.value.classList.remove('dragging')
   }
   document.body.style.cursor = ''
   document.body.style.userSelect = ''
@@ -404,7 +502,7 @@ onUnmounted(() => {
             <span
               class="changes-view-btn"
               style="margin-left: auto; padding: 1px 8px; font-size: 10px;"
-              @click.stop="stageAll"
+              @click.stop="stageSelected"
             >Stage</span>
           </div>
           <div class="cv-group-body" style="flex: 1; overflow-y: auto;">
@@ -412,12 +510,13 @@ onUnmounted(() => {
               <!-- Directory node -->
               <div v-if="item.type === 'dir'"
                 class="changes-tree-item"
+                :class="{ 'dir-selected': selectedDir === item.path }"
                 :style="{ paddingLeft: (4 + item.depth * 16) + 'px' }"
-                @click="toggleDir(item.path)"
+                @click="toggleDir(item.path, 'unstaged')"
               >
                 <span
                   class="tree-toggle"
-                  :class="{ expanded: isDirOpen(item.path) }"
+                  :class="{ expanded: isDirOpen(item.path, 'unstaged') }"
                 >▶</span>
                 <span class="tree-icon tree-icon-folder">📁</span>
                 <span>{{ item.name }}</span>
@@ -431,6 +530,7 @@ onUnmounted(() => {
                 ]"
                 :style="{ paddingLeft: (4 + (item.depth || 0) * 16) + 'px' }"
                 @click="selectFile(item)"
+                @dblclick="onFileDblClick(item, 'unstaged')"
               >
                 <span class="tree-toggle" style="visibility:hidden">▶</span>
                 <span :class="['cv-file-status', statusCssMap[item.status]]">
@@ -475,12 +575,13 @@ onUnmounted(() => {
               <!-- Directory node -->
               <div v-if="item.type === 'dir'"
                 class="changes-tree-item"
+                :class="{ 'dir-selected': selectedDir === item.path }"
                 :style="{ paddingLeft: (4 + item.depth * 16) + 'px' }"
-                @click="toggleDir(item.path)"
+                @click="toggleDir(item.path, 'staged')"
               >
                 <span
                   class="tree-toggle"
-                  :class="{ expanded: isDirOpen(item.path) }"
+                  :class="{ expanded: isDirOpen(item.path, 'staged') }"
                 >▶</span>
                 <span class="tree-icon tree-icon-folder">📁</span>
                 <span>{{ item.name }}</span>
@@ -494,6 +595,7 @@ onUnmounted(() => {
                 ]"
                 :style="{ paddingLeft: (4 + (item.depth || 0) * 16) + 'px' }"
                 @click="selectFile(item)"
+                @dblclick="onFileDblClick(item, 'staged')"
               >
                 <span class="tree-toggle" style="visibility:hidden">▶</span>
                 <span :class="['cv-file-status', statusCssMap[item.status]]">
@@ -521,17 +623,47 @@ onUnmounted(() => {
         @mousedown="onHResizerMouseDown"
       ></div>
 
-      <!-- Right: Diff Panel -->
-      <div class="changes-view-diff">
-        <DiffViewer
-          v-if="selectedFile"
-          :filePath="selectedFile.path"
-          :fileStatus="selectedFile.status"
-          :additions="selectedFile.additions"
-          :deletions="selectedFile.deletions"
-        />
-        <div v-else class="changes-view-diff-placeholder">
-          ← Select a file to view its diff
+      <!-- Right: Diff + Commit -->
+      <div class="changes-view-right">
+        <div class="changes-view-diff">
+          <DiffViewer
+            v-if="selectedFile"
+            :filePath="selectedFile.path"
+            :fileStatus="selectedFile.status"
+            :additions="selectedFile.additions"
+            :deletions="selectedFile.deletions"
+          />
+          <div v-else class="changes-view-diff-placeholder">
+            ← Select a file to view its diff
+          </div>
+        </div>
+
+        <!-- Inline Commit Panel (below diff) -->
+        <div class="cv-inline-commit" ref="commitPanelRef" @keydown="onDiffKeydown">
+          <div class="cv-inline-commit-header" ref="commitHeaderRef" @mousedown="onCommitResizerMouseDown">Commit</div>
+          <div class="cv-inline-commit-body">
+            <input
+              v-model="commitTitle"
+              class="cv-inline-commit-title"
+              type="text"
+              placeholder="Commit title…"
+            />
+            <textarea
+              v-model="commitBody"
+              class="cv-inline-commit-body-input"
+              placeholder="Optional description…"
+            ></textarea>
+            <div v-if="inlineCommitError" class="cv-inline-commit-error">{{ inlineCommitError }}</div>
+          </div>
+          <div class="cv-inline-commit-footer">
+            <button
+              class="cv-inline-commit-btn"
+              :disabled="isCommitDisabled"
+              @click="handleInlineCommit"
+            >
+              {{ inlineCommitting ? 'Committing…' : 'Commit' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -748,5 +880,120 @@ onUnmounted(() => {
 .changes-view-btn.danger:disabled {
   background-color: #e8a0a5;
   cursor: not-allowed;
+}
+
+/* ── Selected directory highlight ──────────────────────────────────── */
+.changes-tree-item.dir-selected {
+  background-color: #e3f2fd;
+  outline: 1px solid #90caf9;
+}
+
+/* ── Inline Commit Panel (below diff) ──────────────────────────────── */
+.cv-inline-commit {
+  border: 1px solid #e1e4e8;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.cv-inline-commit-header {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #333;
+  background-color: #f0f2f4;
+  border-bottom: 1px solid #e1e4e8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: row-resize;
+  user-select: none;
+}
+
+.cv-inline-commit-header:hover,
+.cv-inline-commit-header.dragging {
+  background-color: #e8eaec;
+}
+
+.cv-inline-commit-body {
+  flex: 1;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.cv-inline-commit-title {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cv-inline-commit-title:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+.cv-inline-commit-body-input {
+  flex: 1;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+  resize: none;
+  min-height: 48px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cv-inline-commit-body-input:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+.cv-inline-commit-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 10px 8px;
+}
+
+.cv-inline-commit-btn {
+  padding: 5px 16px;
+  background-color: #28a745;
+  color: #fff;
+  border: 1px solid #1e7e34;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.cv-inline-commit-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.cv-inline-commit-btn:disabled {
+  background-color: #94d3a2;
+  border-color: #7fc08f;
+  cursor: not-allowed;
+}
+
+.cv-inline-commit-error {
+  padding: 4px 8px;
+  background-color: #fff0f0;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #cb2431;
+  font-size: 11px;
 }
 </style>

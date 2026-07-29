@@ -2,8 +2,11 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useApi } from '../composables/useApi.js'
 import { useUiStore } from '../stores/ui.js'
+import { useStatusStore } from '../stores/status.js'
+import { showToast } from '../composables/useToast.js'
 
 const uiStore = useUiStore()
+const statusStore = useStatusStore()
 
 // ─── State ─────────────────────────────────────────────────────
 const commits = ref([])
@@ -12,51 +15,13 @@ const selectedCommit = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
-// ─── Right panel resizer ───────────────────────────────────────
-const graphPanelRef = ref(null)
-const graphResizerRef = ref(null)
-let isDraggingGraph = false
-let graphStartX = 0
-let graphStartWidth = 0
-
-function onGraphResizerMouseDown(e) {
-  isDraggingGraph = true
-  graphStartX = e.clientX
-  if (graphPanelRef.value) graphStartWidth = graphPanelRef.value.offsetWidth
-  if (graphResizerRef.value) graphResizerRef.value.classList.add('dragging')
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-  e.preventDefault()
-}
-
-function onMouseMove(e) {
-  if (isDraggingGraph && graphPanelRef.value) {
-    const deltaX = graphStartX - e.clientX
-    const newWidth = graphStartWidth + deltaX
-    if (newWidth >= 140 && newWidth <= 500) {
-      graphPanelRef.value.style.width = newWidth + 'px'
-    }
-  }
-}
-
-function onMouseUp() {
-  if (isDraggingGraph) {
-    isDraggingGraph = false
-    if (graphResizerRef.value) graphResizerRef.value.classList.remove('dragging')
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
-  }
-}
-
 onMounted(() => {
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
   fetchCommits()
+  document.addEventListener('click', onDocumentClick)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseup', onMouseUp)
+  document.removeEventListener('click', onDocumentClick)
 })
 
 // ─── Fetch real commits from API ───────────────────────────────
@@ -81,6 +46,8 @@ async function fetchCommits() {
       },
       date: c.date,
       refs: c.refs || '',
+      _labels: parseRefs(c.refs || ''),
+      parents: (c.parents || []).map(p => typeof p === 'string' ? p : p.hash || p),
     }))
   } catch (e) {
     console.error('Failed to fetch commits:', e)
@@ -95,6 +62,119 @@ watch(() => uiStore.commitRefreshKey, () => {
   fetchCommits()
 })
 
+// ─── Context Menu ─────────────────────────────────────────────
+const contextMenu = ref({ visible: false, x: 0, y: 0, commit: null })
+const resetDialog = ref({ visible: false, commit: null })
+const pushDialog = ref({ visible: false })
+
+function showContextMenu(event, commit) {
+  event.preventDefault()
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    commit
+  }
+}
+
+function closeContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function onDocumentClick(e) {
+  const menu = document.querySelector('.commit-context-menu')
+  if (menu && !menu.contains(e.target)) {
+    closeContextMenu()
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────
+function openResetDialog(commit) {
+  resetDialog.value = { visible: true, commit }
+  closeContextMenu()
+}
+
+function closeResetDialog() {
+  resetDialog.value.visible = false
+  resetDialog.value.commit = null
+}
+
+const resetModes = [
+  { id: 'soft',  label: 'Soft',  desc: '僅移動 HEAD，保留所有變更在 staged',     icon: '🔹' },
+  { id: 'mixed', label: 'Mixed', desc: '移動 HEAD，保留變更但 unstaged（預設）', icon: '🔸' },
+  { id: 'hard',  label: 'Hard',  desc: '⚠ 移動 HEAD，丟棄所有變更',            icon: '🔴' },
+]
+
+async function resetToHere(commit, mode) {
+  const branchName = statusStore.current
+  const hash = commit.id
+
+  if (mode === 'hard') {
+    const confirmed = confirm(
+      `⚠ ⚠ ⚠  HARD RESET  ⚠ ⚠ ⚠\n\n` +
+      `Reset ${branchName} to ${commit.hash} (${commit.subject})\n` +
+      `and DISCARD ALL uncommitted changes permanently!\n\n` +
+      `Are you sure?`
+    )
+    if (!confirmed) return
+  }
+
+  try {
+    const { post } = useApi()
+    await post('/reset', { hash, mode })
+    showToast('success', `✅ ${mode} reset ${branchName} → ${commit.hash}`)
+    uiStore.triggerCommitRefresh()
+    statusStore.fetchStatus()
+  } catch (e) {
+    showToast('error', `❌ Reset failed: ${e.message}`)
+  } finally {
+    closeResetDialog()
+  }
+}
+
+// ── Push ──────────────────────────────────────────────────────
+function openPushDialog() {
+  pushDialog.value = { visible: true }
+  closeContextMenu()
+}
+
+function closePushDialog() {
+  pushDialog.value.visible = false
+}
+
+const pushModes = [
+  { id: 'normal',   label: 'Normal Push',    desc: '推送目前分支到 origin',                     icon: '📤' },
+  { id: 'upstream', label: 'Push & Set Upstream', desc: '推送 + 設定 upstream（新分支第一次用）', icon: '🔗' },
+  { id: 'force',    label: 'Force Push',     desc: '⚠ 強制推送，覆蓋遠端歷史',                  icon: '⚠️' },
+]
+
+async function doPush(mode) {
+  if (mode === 'force') {
+    const confirmed = confirm(
+      `⚠ ⚠ ⚠  FORCE PUSH  ⚠ ⚠ ⚠\n\n` +
+      `Force push ${statusStore.current} to origin?\n` +
+      `This will OVERWRITE remote history!\n\n` +
+      `Are you sure?`
+    )
+    if (!confirmed) return
+  }
+
+  try {
+    const { post } = useApi()
+    const opts = {
+      force: mode === 'force',
+      setUpstream: mode === 'upstream',
+    }
+    await post('/push', opts)
+    showToast('success', `📤 Pushed ${statusStore.current} → origin`)
+    statusStore.fetchStatus()
+  } catch (e) {
+    showToast('error', `❌ Push failed: ${e.message}`)
+  } finally {
+    closePushDialog()
+  }
+}
+
 // ─── Actions ───────────────────────────────────────────────────
 function selectCommit(commit) {
   selectedCommitId.value = commit.id
@@ -104,57 +184,59 @@ function selectCommit(commit) {
 defineExpose({ selectedCommit })
 
 // ═══════════════════════════════════════════════════════════════
-//  LANE ROUTING (Track Allocation)
+//  LANE ROUTING (Track Allocation) — parent-hash based
 // ═══════════════════════════════════════════════════════════════
 //
-//  1. Topological order (given by API order — newest first)
-//  2. Master (trunk) always stays on lane 0
-//  3. Branch point → allocate next free lane to the right
-//  4. Merge point → reclaim lane after merge
-//  5. Each row tracks ALL active lanes that pass through it
+//  Algorithm:
+//    1. HEAD (data[0]) → lane 0 (trunk)
+//    2. Walk forward: if commit[i] is the parent of commit[i-1] (i.e., linear),
+//       it inherits the same lane.
+//    3. Else: commit[i-1]'s parent is NOT commit[i] → this means
+//       commit[i-1] is a merge or the first commit of a branch.
+//       -> commit[i] gets a new lane OR reuses an already-assigned lane.
 //
-//  For now, simulate lane routing based on refs / author grouping.
-//  When real DAG data (parents) arrives, replace the heuristic.
+//  Active lanes per row: determined by each lane's first→last row span.
+//  Branch/merge events: detected when lane appears/disappears.
 // ═══════════════════════════════════════════════════════════════
 
 const LANE_COLORS = ['#f5a623', '#4a90e2', '#e056fd', '#28a745', '#cb2431']
-const LANE_X_BASE = 25  // lane 0 x position
-const LANE_X_STEP = 30  // spacing between lanes
+const LANE_X_BASE = 25
+const LANE_X_STEP = 30
 
-/**
- * Lane routing (Track Allocation)
- *
- * Heuristic for flat commit list without parent DAG info:
- *  1. Lane 0 = trunk (master/main) — runs through all commits
- *  2. Different branch names get lanes 1, 2, 3…
- *  3. A branch lane is active from its first occurrence to its last
- *  4. Branch point = when a non-trunk lane FIRST appears
- *  5. Merge point = when a non-trunk lane LAST appears
- *
- * Returns array (same order):
- *   { id, lane, activeLanes[], isBranchPoint, isMergePoint, … }
- */
 function routeLanes(data) {
   if (!data || !data.length) return []
 
-  // ── Pass 1: assign lanes ──
-  //  Only refs that look like branch names (contain '/') get dedicated lanes.
-  //  Tags, HEAD, and empty refs all stay on trunk (lane 0).
-  const refToLane = new Map()
+  // hash → lane index
+  const hashToLane = new Map()
   let nextLane = 1
 
-  const commitLanes = data.map((c) => {
-    const ref = (c.refs || '').trim()
-    if (!ref) return 0
-    // Treat as branch reference only if it looks like a branch path
-    // (e.g., "origin/feature-xxx", "refs/heads/xxx")
-    const isBranchRef = ref.includes('/')
-    if (!isBranchRef) return 0
+  // ── Pass 1: assign lanes by following parent chain ──
+  const commitLanes = data.map((c, idx) => {
+    let lane
 
-    if (!refToLane.has(ref)) {
-      refToLane.set(ref, nextLane++)
+    if (idx === 0) {
+      // HEAD → lane 0 (trunk)
+      lane = 0
+    } else {
+      const prev = data[idx - 1]
+      // Does this commit connect linearly to the previous one?
+      // Compare using full hash (parents from API are full 40-char hashes)
+      const isParentOfPrev = prev.parents && prev.parents.some(ph => ph === c.fullHash)
+
+      if (isParentOfPrev) {
+        // Linear: this is the parent of the previous commit → same lane
+        lane = hashToLane.get(prev.hash)
+      } else if (hashToLane.has(c.hash)) {
+        // Already assigned (was a parent of an earlier commit from another branch)
+        lane = hashToLane.get(c.hash)
+      } else {
+        // New branch: this commit is NOT the parent of the previous one
+        lane = nextLane++
+      }
     }
-    return refToLane.get(ref)
+
+    hashToLane.set(c.hash, lane)
+    return lane
   })
 
   // ── Pass 2: determine active range for each lane ──
@@ -164,7 +246,6 @@ function routeLanes(data) {
     if (!laneFirst.has(lane) || idx < laneFirst.get(lane)) laneFirst.set(lane, idx)
     if (!laneLast.has(lane) || idx > laneLast.get(lane)) laneLast.set(lane, idx)
   })
-  // Trunk (lane 0) runs the full list
   laneFirst.set(0, 0)
   laneLast.set(0, data.length - 1)
 
@@ -186,13 +267,13 @@ function routeLanes(data) {
       }
     }
 
-    // Row is a branch point if it's the FIRST occurrence of a non-trunk lane
+    // Branch point: first occurrence of a non-trunk lane
     const isBranchPoint = myLane !== 0 && idx === laneFirst.get(myLane)
-    // Row is a merge point if it's the LAST occurrence of a non-trunk lane
+    // Merge point: last occurrence of a non-trunk lane
     const isMergePoint = myLane !== 0 && idx === laneLast.get(myLane)
-    // Trunk spawns a branch: trunk commit right BEFORE a new non-trunk lane
+    // Trunk spawns a branch: trunk row just before a new non-trunk lane starts
     const isTrunkBranchOut = myLane === 0 && nextLane !== 0 && nextLane !== myLane && idx + 1 === laneFirst.get(nextLane)
-    // Trunk absorbs a merge: trunk commit right AFTER a non-trunk lane ends
+    // Trunk absorbs a merge: trunk row just after a non-trunk lane ends
     const isTrunkMergeIn = myLane === 0 && prevLane !== 0 && prevLane !== myLane && idx - 1 === laneLast.get(prevLane)
 
     return {
@@ -314,80 +395,30 @@ function getRowGraph(commit, index) {
   return svg
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  RIGHT PANEL — OVERVIEW GRAPH
-// ═══════════════════════════════════════════════════════════════
+// ─── Parse refs string into structured labels ───────────────
+//  'HEAD -> Tony, origin/Tony' → { local: ['Tony'], remote: ['origin/Tony'] }
+//  'origin/main, 測試, main'   → { local: ['測試', 'main'], remote: ['origin/main'] }
+function parseRefs(refsStr) {
+  const labels = { local: [], remote: [], tags: [] }
+  if (!refsStr) return labels
 
-const overviewData = computed(() => {
-  const data = commits.value
-  if (!data || !data.length) return { height: 0, segments: [], nodes: [] }
+  refsStr.split(',').forEach(part => {
+    const name = part.trim()
+    if (!name || name === 'HEAD') return
+    // Strip 'HEAD -> ' prefix (e.g., 'HEAD -> Tony' → 'Tony')
+    const clean = name.replace(/^HEAD -> /, '').trim()
+    if (!clean) return
 
-  const routes = laneRouting.value
-  if (!routes || !routes.length) return { height: 0, segments: [], nodes: [] }
-
-  const nodeHeight = 28
-  const totalHeight = data.length * nodeHeight + 40
-
-  // Build nodes
-  const nodes = data.map((c, idx) => {
-    const r = routes[idx]
-    return {
-      id: c.id,
-      x: getLaneX(r.lane),
-      y: 20 + idx * nodeHeight + nodeHeight / 2,
-      lane: r.lane,
-      color: getLaneColor(r.lane),
+    if (clean.startsWith('origin/') || clean.startsWith('refs/remotes/')) {
+      labels.remote.push(clean)
+    } else if (clean.startsWith('refs/tags/') || /^v?\d+\./.test(clean)) {
+      labels.tags.push(clean)
+    } else {
+      labels.local.push(clean)
     }
   })
-
-  // Build segments: for each consecutive pair, connect lanes properly
-  const segments = []
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const from = nodes[i]
-    const to = nodes[i + 1]
-
-    if (from.lane === to.lane) {
-      // Same lane → straight line, colored by lane
-      segments.push({
-        type: 'line',
-        x1: from.x, y1: from.y,
-        x2: to.x, y2: to.y,
-        color: from.color,
-      })
-    } else {
-      // Different lane → curve from source lane to target lane
-      // Color = source lane (the branch that's diverging/merging)
-      const midY = (from.y + to.y) / 2
-      segments.push({
-        type: 'curve',
-        x1: from.x, y1: from.y,
-        x2: to.x, y2: to.y,
-        midY,
-        color: getLaneColor(from.lane),
-      })
-
-      // Also draw a straight continuation on each lane
-      // (the through-line for lanes that persist)
-      const fromRoute = routes[i]
-      const toRoute = routes[i + 1]
-
-      // For lanes that continue through both rows, draw vertical lines
-      for (const lane of fromRoute.activeLanes) {
-        if (toRoute.activeLanes.includes(lane) && lane !== from.lane && lane !== to.lane) {
-          const lx = getLaneX(lane)
-          segments.push({
-            type: 'line',
-            x1: lx, y1: from.y,
-            x2: lx, y2: to.y,
-            color: getLaneColor(lane),
-          })
-        }
-      }
-    }
-  }
-
-  return { height: totalHeight, segments, nodes }
-})
+  return labels
+}
 </script>
 
 <template>
@@ -415,109 +446,109 @@ const overviewData = computed(() => {
     </div>
   </div>
 
-  <!-- Split Layout: Table + Graph Overview -->
-  <div v-else class="commit-split-container">
-    <!-- Left: Commit Table -->
-    <div class="commit-table-panel">
-      <table class="commit-table">
-        <thead>
-          <tr>
-            <th style="width: 80px;">Graph</th>
-            <th>Subject</th>
-            <th style="width: 160px;">Author</th>
-            <th style="width: 80px;">Hash</th>
-            <th style="width: 140px;">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(commit, idx) in commits"
-            :key="commit.id"
-            :data-commit-id="commit.id"
-            :class="{ selected: selectedCommitId === commit.id }"
-            @click="selectCommit(commit)"
-          >
-            <!-- Graph Column -->
-            <td class="graph-col" v-html="getRowGraph(commit, idx)"></td>
-
-            <!-- Subject Column -->
-            <td>
-              <span>{{ commit.subject }}</span>
-            </td>
-
-            <!-- Author Column -->
-            <td>
-              <span class="author-tag" style="background-color: #4a90e2;">
-                {{ commit.author.initials }}
-              </span>
-              {{ commit.author.name }}
-            </td>
-
-            <!-- Hash Column -->
-            <td style="font-family: monospace; font-size: 11px; color: #007acc;">
-              {{ commit.hash }}
-            </td>
-
-            <!-- Date Column -->
-            <td style="font-size: 11px; color: #666;">{{ commit.date }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Graph Resizer -->
-    <div
-      class="graph-resizer"
-      ref="graphResizerRef"
-      @mousedown="onGraphResizerMouseDown"
-    ></div>
-
-    <!-- Right: Commit Graph Overview -->
-    <div class="graph-panel" ref="graphPanelRef">
-      <div class="graph-panel-header">
-        <span class="graph-panel-title">Graph</span>
-      </div>
-      <div class="graph-panel-body">
-        <svg
-          :viewBox="`0 0 200 ${overviewData.height}`"
-          class="graph-overview-svg"
-          preserveAspectRatio="xMidYMin meet"
+  <!-- Commit Table with inline graph -->
+  <div v-else class="commit-table-wrapper">
+    <table class="commit-table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Graph</th>
+          <th>Subject</th>
+          <th style="width: 160px;">Author</th>
+          <th style="width: 80px;">Hash</th>
+          <th style="width: 140px;">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(commit, idx) in commits"
+          :key="commit.id"
+          :data-commit-id="commit.id"
+          :class="{ selected: selectedCommitId === commit.id }"
+          @click="selectCommit(commit)"
+          @contextmenu="showContextMenu($event, commit)"
         >
-          <!-- Segments: lines and curves -->
-          <template v-for="(seg, i) in overviewData.segments" :key="'seg-' + i">
-            <line
-              v-if="seg.type === 'line'"
-              :x1="seg.x1" :y1="seg.y1"
-              :x2="seg.x2" :y2="seg.y2"
-              :stroke="seg.color"
-              stroke-width="2.5"
-              stroke-linecap="round"
-            />
-            <path
-              v-else
-              :d="`M ${seg.x1} ${seg.y1} Q ${seg.x1} ${seg.midY} ${seg.x2} ${seg.y2}`"
-              fill="none"
-              :stroke="seg.color"
-              stroke-width="2.5"
-              stroke-linecap="round"
-            />
-          </template>
+          <!-- Graph Column -->
+          <td class="graph-col" v-html="getRowGraph(commit, idx)"></td>
 
-          <!-- Commit dots on every row -->
-          <circle
-            v-for="node in overviewData.nodes"
-            :key="'n-' + node.id"
-            :cx="node.x"
-            :cy="node.y"
-            r="4"
-            :fill="node.color"
-            stroke="#fff"
-            stroke-width="1.5"
-            class="graph-overview-node"
-          />
-        </svg>
+          <!-- Subject Column -->
+          <td>
+            <span v-for="lb in commit._labels.local" :key="'l-' + lb" class="badge-branch">✓ {{ lb }}</span>
+            <span v-for="lb in commit._labels.remote" :key="'r-' + lb" class="badge-tag">{{ lb.replace('origin/', '') }}</span>
+            <span>{{ commit.subject }}</span>
+          </td>
+
+          <!-- Author Column -->
+          <td>
+            <span class="author-tag" style="background-color: #4a90e2;">
+              {{ commit.author.initials }}
+            </span>
+            {{ commit.author.name }}
+          </td>
+
+          <!-- Hash Column -->
+          <td style="font-family: monospace; font-size: 11px; color: #007acc;">
+            {{ commit.hash }}
+          </td>
+
+          <!-- Date Column -->
+          <td style="font-size: 11px; color: #666;">{{ commit.date }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Context Menu -->
+    <teleport to="body">
+      <div
+        v-if="contextMenu.visible"
+        class="commit-context-menu"
+        :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      >
+        <div class="context-menu-header">
+          {{ statusStore.current }}
+        </div>
+        <div class="context-menu-separator"></div>
+        <div
+          class="context-menu-item"
+          @click="openResetDialog(contextMenu.commit)"
+        >
+          <span class="context-menu-icon">↩</span>
+          <span class="context-menu-title">
+            Reset <strong>{{ statusStore.current }}</strong> to Here
+          </span>
+        </div>
       </div>
-    </div>
+    </teleport>
+
+    <!-- Reset Type Dialog -->
+    <teleport to="body">
+      <div v-if="resetDialog.visible" class="reset-overlay" @click.self="closeResetDialog">
+        <div class="reset-dialog">
+          <div class="reset-dialog-header">
+            Reset {{ statusStore.current }} to
+            <span class="reset-dialog-hash">{{ resetDialog.commit?.hash }}</span>
+          </div>
+          <div class="reset-dialog-subject">{{ resetDialog.commit?.subject }}</div>
+          <div class="reset-dialog-body">
+            <div
+              v-for="rm in resetModes"
+              :key="rm.id"
+              class="reset-option"
+              :class="{ danger: rm.id === 'hard' }"
+              @click="resetToHere(resetDialog.commit, rm.id)"
+            >
+              <span class="reset-option-icon">{{ rm.icon }}</span>
+              <div class="reset-option-label">
+                <span class="reset-option-title">{{ rm.label }}</span>
+                <span class="reset-option-desc">{{ rm.desc }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="reset-dialog-footer">
+            <button class="reset-dialog-cancel" @click="closeResetDialog">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -537,75 +568,40 @@ const overviewData = computed(() => {
   align-items: center;
 }
 
-/* ─── Split Layout ───────────────────────────────────────────── */
-.commit-split-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  min-height: 0;
-  height: 100%;
-}
-
-.commit-table-panel {
+/* ─── Table Wrapper ──────────────────────────────────────────── */
+.commit-table-wrapper {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
   min-width: 400px;
+  height: 100%;
 }
 
-/* ─── Graph Resizer ──────────────────────────────────────────── */
-.graph-resizer {
-  width: 5px;
-  background-color: #e2e2e2;
-  cursor: col-resize;
-  transition: background-color 0.15s;
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.graph-resizer:hover,
-.graph-resizer.dragging {
-  background-color: #007acc;
-}
-
-/* ─── Graph Panel (Right Side) ───────────────────────────────── */
-.graph-panel {
-  width: 160px;
-  min-width: 120px;
-  max-width: 400px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  background-color: #fafbfc;
-  border-left: 1px solid #e0e0e0;
-  overflow: hidden;
-}
-
-.graph-panel-header {
-  padding: 8px 12px;
-  font-weight: bold;
-  font-size: 12px;
+/* ─── Subject column badges (docs/uiux style) ─── */
+.badge-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: #fff;
+  border: 1px solid #4a90e2;
   color: #333;
-  border-bottom: 1px solid #ececec;
-  background-color: #f5f6f8;
-  flex-shrink: 0;
-}
-
-.graph-panel-title {
-  font-size: 12px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
   font-weight: bold;
-  color: #555;
+  margin-right: 4px;
 }
 
-.graph-panel-body {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.graph-overview-svg {
-  width: 100%;
-  display: block;
+.badge-tag {
+  display: inline-flex;
+  align-items: center;
+  background-color: #fff2cc;
+  border: 1px solid #d6b656;
+  color: #333;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin-right: 4px;
 }
 
 /* ─── Commit Table Styles ────────────────────────────────────── */
@@ -671,5 +667,177 @@ const overviewData = computed(() => {
   color: #fff;
   font-weight: bold;
   margin-right: 4px;
+}
+
+/* ─── Context Menu ─────────────────────────────────────────────── */
+.commit-context-menu {
+  position: fixed;
+  z-index: 99999;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  padding: 6px 0;
+  min-width: 200px;
+  font-size: 12px;
+}
+
+.context-menu-header {
+  padding: 5px 14px 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.context-menu-item {
+  padding: 7px 14px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  transition: background-color 0.1s;
+}
+
+.context-menu-item:hover {
+  background-color: #f0f6fc;
+}
+
+.context-menu-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+
+.context-menu-title {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: #e8e8e8;
+  margin: 4px 0;
+}
+
+/* ─── Reset Type Dialog ────────────────────────────────────────── */
+.reset-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-dialog {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  min-width: 360px;
+  max-width: 440px;
+  overflow: hidden;
+}
+
+.reset-dialog-header {
+  padding: 16px 20px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.reset-dialog-hash {
+  font-family: 'SF Mono', Consolas, monospace;
+  color: #007acc;
+}
+
+.reset-dialog-subject {
+  padding: 0 20px 12px;
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #eee;
+}
+
+.reset-dialog-body {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reset-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.reset-option:hover {
+  background-color: #f0f6fc;
+}
+
+.reset-option.danger:hover {
+  background-color: #fff0f0;
+}
+
+.reset-option-icon {
+  font-size: 20px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.reset-option-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reset-option-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.reset-option.danger .reset-option-title {
+  color: #cb2431;
+}
+
+.reset-option-desc {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.3;
+}
+
+.reset-dialog-footer {
+  padding: 10px 20px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.reset-dialog-cancel {
+  padding: 6px 24px;
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.reset-dialog-cancel:hover {
+  background: #e8e8e8;
+  border-color: #aaa;
 }
 </style>
