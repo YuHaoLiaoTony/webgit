@@ -4,6 +4,7 @@ import { useApi } from '../composables/useApi.js'
 import { useUiStore } from '../stores/ui.js'
 import { useStatusStore } from '../stores/status.js'
 import { showToast } from '../composables/useToast.js'
+import CheckoutFastForwardDialog from './CheckoutFastForwardDialog.vue'
 
 const uiStore = useUiStore()
 const statusStore = useStatusStore()
@@ -66,6 +67,54 @@ watch(() => uiStore.commitRefreshKey, () => {
 const contextMenu = ref({ visible: false, x: 0, y: 0, commit: null })
 const resetDialog = ref({ visible: false, commit: null })
 const pushDialog = ref({ visible: false })
+
+// ── Checkout & Fast-Forward Dialog ────────────────────────────
+const checkoutFFDialog = ref({ visible: false, localBranch: '', remoteBranch: '' })
+
+function openCheckoutFFDialog(commit) {
+  // Derive local & remote branches from commit refs
+  const labels = commit._labels || { local: [], remote: [], tags: [] }
+
+  let localBranch = ''
+  let remoteBranch = ''
+
+  // Prioritize matching pairs: e.g., 'Tony' ↔ 'origin/Tony'
+  if (labels.local.length > 0) {
+    localBranch = labels.local[0]
+    // Look for a matching remote branch
+    const matchingRemote = labels.remote.find(r => r === `origin/${localBranch}`)
+    if (matchingRemote) {
+      remoteBranch = matchingRemote
+    } else if (labels.remote.length > 0) {
+      remoteBranch = labels.remote[0]
+    } else {
+      remoteBranch = `origin/${localBranch}`
+    }
+  } else if (labels.remote.length > 0) {
+    // Only remote refs available – strip origin/ for local
+    const full = labels.remote[0]
+    remoteBranch = full
+    if (full.startsWith('origin/')) {
+      localBranch = full.slice(7)
+    } else {
+      localBranch = full
+    }
+  } else {
+    // Fallback to current branch
+    localBranch = statusStore.current || 'main'
+    remoteBranch = `origin/${localBranch}`
+  }
+
+  checkoutFFDialog.value = {
+    visible: true,
+    localBranch,
+    remoteBranch,
+  }
+}
+
+function closeCheckoutFFDialog() {
+  checkoutFFDialog.value.visible = false
+}
 
 function showContextMenu(event, commit) {
   event.preventDefault()
@@ -473,6 +522,7 @@ function parseRefs(refsStr) {
           :data-commit-id="commit.id"
           :class="{ selected: selectedCommitId === commit.id }"
           @click="selectCommit(commit)"
+          @dblclick="openCheckoutFFDialog(commit)"
           @contextmenu="showContextMenu($event, commit)"
         >
           <!-- Graph Column -->
@@ -557,6 +607,15 @@ function parseRefs(refsStr) {
         </div>
       </div>
     </teleport>
+
+    <!-- Checkout & Fast-Forward Dialog -->
+    <CheckoutFastForwardDialog
+      :show="checkoutFFDialog.visible"
+      :local-branch="checkoutFFDialog.localBranch"
+      :remote-branch="checkoutFFDialog.remoteBranch"
+      @close="closeCheckoutFFDialog"
+      @done="fetchCommits"
+    />
   </div>
 </template>
 

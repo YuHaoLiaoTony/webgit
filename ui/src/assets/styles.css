@@ -1259,36 +1259,6 @@ html, body {
   background-color: #fff;
 }
 
-.changes-view-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #fafafa;
-  flex-shrink: 0;
-}
-
-.changes-view-title {
-  font-weight: bold;
-  font-size: 13px;
-  color: #333;
-}
-
-.changes-view-badge {
-  font-size: 11px;
-  color: #888;
-  background: #eee;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.changes-view-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
-}
-
 .changes-view-btn {
   padding: 3px 12px;
   font-size: 11px;

@@ -494,6 +494,75 @@ export function createGitAPI(repoPath) {
       return { success: true };
     },
 
+    async checkoutAndFastForward({ localBranch, remoteBranch, localChanges = 'dont-change' } = {}) {
+      validateBranchName(localBranch);
+      validateBranchName(remoteBranch);
+
+      const validModes = ['dont-change', 'stash', 'discard'];
+      if (!validModes.includes(localChanges)) {
+        throw new Error(`Invalid local changes mode '${localChanges}'. Valid modes: ${validModes.join(', ')}`);
+      }
+
+      // Save current state
+      const currentBranch = (await git.status()).current;
+      let stashResult = null;
+
+      try {
+        // Handle local changes before checkout
+        if (localChanges === 'stash') {
+          stashResult = await git.stash(['push', '-m', `auto-stash before checkout-ff to ${localBranch}`]);
+        } else if (localChanges === 'discard') {
+          await git.checkout(['--', '.']);
+          // Also clean untracked
+          try {
+            await git.raw(['clean', '-fd']);
+          } catch (_) {}
+        }
+
+        // Checkout the target local branch
+        await git.checkout(localBranch);
+
+        // Fetch latest from remote
+        try {
+          await git.fetch();
+        } catch (_) {
+          // Fetch may fail if no remote, continue
+        }
+
+        // Fast-forward merge: merge remoteBranch into localBranch with --ff-only
+        try {
+          await git.merge([`--ff-only`, remoteBranch]);
+        } catch (e) {
+          // If ff-only fails, try a simpler approach: reset --hard to remoteBranch
+          if (e.message && e.message.includes('Not possible to fast-forward')) {
+            await git.reset(['--hard', remoteBranch]);
+          } else {
+            throw e;
+          }
+        }
+
+        // Reapply stash if we stashed
+        if (localChanges === 'stash' && stashResult) {
+          try {
+            await git.stash(['pop']);
+          } catch (_) {
+            // Stash pop may have conflicts, that's OK
+          }
+        }
+
+        return { success: true, localBranch, remoteBranch };
+      } catch (e) {
+        // Try to restore original branch on failure
+        try {
+          await git.checkout(currentBranch);
+          if (localChanges === 'stash' && stashResult) {
+            await git.stash(['pop']);
+          }
+        } catch (_) {}
+        throw e;
+      }
+    },
+
     async setConfig(key, value) {
       // Whitelist of allowed config keys to prevent command injection
       const allowedKeys = [

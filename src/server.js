@@ -155,6 +155,17 @@ export async function startServer(options = {}) {
     }
   });
 
+  app.post('/api/branches/checkout-ff', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { localBranch, remoteBranch, localChanges } = req.body;
+      const result = await gitAPI.checkoutAndFastForward({ localBranch, remoteBranch, localChanges });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   app.post('/api/branches/checkout', csrfProtection, async (req, res) => {
     try {
       const gitAPI = getGitAPI(req);

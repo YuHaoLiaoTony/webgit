@@ -467,8 +467,7 @@ function updateCounts() {
   document.getElementById('count-staged').textContent = stagedCount;
 
   var total = unstagedCount + stagedCount;
-  var badge = document.querySelector('.changes-view-badge');
-  if (badge) badge.textContent = total + ' files changed';
+  // badge removed
 }
 
 // --- 24. Commit Changes ---

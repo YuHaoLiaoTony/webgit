@@ -1,17 +1,7 @@
 // changes-view.js - Content loaded into #changesView
 // Loaded via <script src="changes-view.js"></script> in index.html (before app.js)
 (function() {
-  var html = `<div class="changes-view-toolbar">
-  <span class="changes-view-title">📝 Uncommitted Changes</span>
-  <span class="changes-view-badge">11 files changed</span>
-  <div class="changes-view-actions">
-    <span class="changes-view-btn" id="btnStage" onclick="stageSelected()">Stage</span>
-    <span class="changes-view-btn" id="btnUnstage" onclick="unstageSelected()">Unstage</span>
-    <span class="changes-view-btn" onclick="stageAll()">Stage All</span>
-    <span class="changes-view-btn primary" onclick="commitChanges()">Commit…</span>
-  </div>
-</div>
-<div class="changes-view-body">
+  var html = `<div class="changes-view-body">
   <div class="changes-view-files" id="changesViewFiles">
     <!-- Unstaged Changes (top) -->
     <div class="cv-group" id="group-unstaged">

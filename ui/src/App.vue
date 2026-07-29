@@ -9,6 +9,7 @@ import ToastNotification from './components/ToastNotification.vue'
 import PushDialog from './components/PushDialog.vue'
 import PullDialog from './components/PullDialog.vue'
 import StashDialog from './components/StashDialog.vue'
+import NewBranchDialog from './components/NewBranchDialog.vue'
 import { useUiStore } from './stores/ui.js'
 import { useReposStore } from './stores/repos.js'
 import { useStatusStore } from './stores/status.js'
@@ -84,6 +85,22 @@ function closePullDialog() {
 
 function onPulled() {
   // Refresh status after pull
+  statusStore.fetchStatus()
+}
+
+// ─── New Branch Dialog ───────────────────────────────────────────────────
+const showNewBranchDialog = ref(false)
+
+function openNewBranchDialog() {
+  showNewBranchDialog.value = true
+}
+
+function closeNewBranchDialog() {
+  showNewBranchDialog.value = false
+}
+
+function onBranchCreated() {
+  // Refresh status after creating a branch
   statusStore.fetchStatus()
 }
 
@@ -217,14 +234,14 @@ onUnmounted(() => {
       <span class="toolbar-label">Stash</span>
     </div>
     <div class="toolbar-divider"></div>
+    <div class="toolbar-btn" @click="openNewBranchDialog">
+      <span class="toolbar-icon">+🌿</span>
+      <span class="toolbar-label">New Branch</span>
+    </div>
+    <div class="toolbar-divider"></div>
     <div style="flex: 1; text-align: center;">
       <div style="font-weight: bold; font-size: 13px;">TypeScript*</div>
       <div style="font-size: 10px; color: #666;">🌿 master</div>
-    </div>
-    <div class="toolbar-divider"></div>
-    <div class="toolbar-btn">
-      <span class="toolbar-icon">+🌿</span>
-      <span class="toolbar-label">New Branch</span>
     </div>
     <div class="toolbar-divider"></div>
     <div class="toolbar-btn">
@@ -311,6 +328,13 @@ onUnmounted(() => {
     :show="showPullDialog"
     @close="closePullDialog"
     @pulled="onPulled"
+  />
+
+  <!-- New Branch Dialog -->
+  <NewBranchDialog
+    :show="showNewBranchDialog"
+    @close="closeNewBranchDialog"
+    @created="onBranchCreated"
   />
 
   <!-- Stash Dialog -->

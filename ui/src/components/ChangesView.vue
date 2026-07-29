@@ -471,19 +471,6 @@ onUnmounted(() => {
 
 <template>
   <div class="changes-view">
-    <!-- Toolbar -->
-    <div class="changes-view-toolbar">
-      <span class="changes-view-title">📝 Uncommitted Changes</span>
-      <span class="changes-view-badge">{{ allChangedFiles.length }} file{{ allChangedFiles.length !== 1 ? 's' : '' }} changed</span>
-      <div class="changes-view-actions">
-        <button class="changes-view-btn" @click="stageSelected">Stage</button>
-        <button class="changes-view-btn" @click="unstageSelected">Unstage</button>
-        <button class="changes-view-btn danger" @click="openDiscardConfirm">Discard</button>
-        <button class="changes-view-btn" @click="stageAll">Stage All</button>
-        <button class="changes-view-btn primary" @click="commitChanges">Commit…</button>
-      </div>
-    </div>
-
     <!-- Body: side-by-side -->
     <div class="changes-view-body">
       <!-- Left: File Tree Panel -->

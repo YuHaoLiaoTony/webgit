@@ -21,8 +21,6 @@ export const Toolbar = {
 
 // ─── Changes View ──────────────────────────────────────────────────────
 export const ChangesView = {
-  title: () => page.locator('.changes-view-title'),
-  badge: () => page.locator('.changes-view-badge'),
   stageBtn: () => page.locator('.changes-view-btn', { hasText: /^Stage$/ }).first(),
   stageAllBtn: () => page.locator('.changes-view-btn', { hasText: 'Stage All' }),
   unstageBtn: () => page.locator('.changes-view-btn', { hasText: 'Unstage' }),
