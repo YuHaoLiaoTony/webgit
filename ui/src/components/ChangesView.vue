@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useStatusStore } from '../stores/status.js'
+import DiffViewer from './DiffViewer.vue'
 
 const statusStore = useStatusStore()
 
@@ -432,27 +433,13 @@ onUnmounted(() => {
 
       <!-- Right: Diff Panel -->
       <div class="changes-view-diff">
-        <template v-if="selectedFile">
-          <div class="cv-diff-content">
-            <div class="diff-file-header">
-              <span :class="['file-status-badge', `file-status-${selectedFile.status}`]">
-                {{ statusActionLabel[selectedFile.status] }}
-              </span>
-              <span>{{ selectedFile.path }}</span>
-            </div>
-            <div class="diff-hunk-header">
-              @@ -0,0 +1,{{ Math.max(selectedFile.additions || 0, 1) }} @@
-            </div>
-            <div v-if="selectedFile.additions > 0" class="diff-line diff-add">
-              <span class="diff-line-number">1</span>
-              <span>+ <em style="color: #888; font-style: italic;">{{ selectedFile.additions }} additions — diff preview</em></span>
-            </div>
-            <div v-if="selectedFile.deletions > 0" class="diff-line diff-del">
-              <span class="diff-line-number">2</span>
-              <span>- <em style="color: #888; font-style: italic;">{{ selectedFile.deletions }} deletions</em></span>
-            </div>
-          </div>
-        </template>
+        <DiffViewer
+          v-if="selectedFile"
+          :filePath="selectedFile.path"
+          :fileStatus="selectedFile.status"
+          :additions="selectedFile.additions"
+          :deletions="selectedFile.deletions"
+        />
         <div v-else class="changes-view-diff-placeholder">
           ← Select a file to view its diff
         </div>
