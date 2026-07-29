@@ -1,7 +1,8 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
-import { createGitAPI } from './git.js';
+import { createRepoManager } from './repoManager.js';
+import simpleGit from 'simple-git';
 import { randomBytes } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +15,7 @@ const __dirname = dirname(__filename);
  * @param {string} [options.repoPath=process.cwd()] - Path to the git repository
  * @param {boolean} [options.open=false] - Open browser automatically
  */
-export function startServer(options = {}) {
+export async function startServer(options = {}) {
   const port = options.port || process.env.PORT || 3000;
   const repoPath = options.repoPath || process.env.REPO_PATH || process.cwd();
   const repoName = basename(repoPath);
@@ -112,12 +113,20 @@ export function startServer(options = {}) {
     return message;
   }
 
-  // Create git API
-  const gitAPI = createGitAPI(repoPath);
+  // Create repository manager (supports multiple repos)
+  const repoManager = createRepoManager();
+  const defaultRepo = await repoManager.openRepo(repoPath);
+
+  // Helper: resolve the git API from request's repoId query/body
+  function getGitAPI(req) {
+    const repoId = req.query.repoId || req.body?.repoId;
+    return repoManager.getAPI(repoId || repoManager.getDefaultRepo());
+  }
 
   // API Routes
   app.get('/api/status', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const status = await gitAPI.getStatus();
       res.json(status);
     } catch (error) {
@@ -127,6 +136,7 @@ export function startServer(options = {}) {
 
   app.get('/api/branches', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const branches = await gitAPI.getBranches();
       res.json(branches);
     } catch (error) {
@@ -136,6 +146,7 @@ export function startServer(options = {}) {
 
   app.post('/api/branches', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { name, checkout } = req.body;
       const result = await gitAPI.createBranch(name, checkout);
       res.json(result);
@@ -146,6 +157,7 @@ export function startServer(options = {}) {
 
   app.post('/api/branches/checkout', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { branch } = req.body;
       const result = await gitAPI.checkoutBranch(branch);
       res.json(result);
@@ -156,6 +168,7 @@ export function startServer(options = {}) {
 
   app.delete('/api/branches/:name', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const result = await gitAPI.deleteBranch(req.params.name);
       res.json(result);
     } catch (error) {
@@ -165,6 +178,7 @@ export function startServer(options = {}) {
 
   app.get('/api/commits', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const limit = parseInt(req.query.limit) || 50;
       const commits = await gitAPI.getCommitHistory(limit);
       res.json(commits);
@@ -175,6 +189,7 @@ export function startServer(options = {}) {
 
   app.get('/api/commits/:hash', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const commit = await gitAPI.getCommitDetails(req.params.hash);
       res.json(commit);
     } catch (error) {
@@ -184,6 +199,7 @@ export function startServer(options = {}) {
 
   app.get('/api/diff', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { file, staged } = req.query;
       const diff = await gitAPI.getDiff(file, staged === 'true');
       res.json({ diff });
@@ -194,6 +210,7 @@ export function startServer(options = {}) {
 
   app.post('/api/stage', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { files } = req.body;
       const result = await gitAPI.stageFiles(files);
       res.json(result);
@@ -204,6 +221,7 @@ export function startServer(options = {}) {
 
   app.post('/api/unstage', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { files } = req.body;
       const result = await gitAPI.unstageFiles(files);
       res.json(result);
@@ -214,6 +232,7 @@ export function startServer(options = {}) {
 
   app.post('/api/commit', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { message } = req.body;
       const result = await gitAPI.commit(message);
       res.json(result);
@@ -224,6 +243,7 @@ export function startServer(options = {}) {
 
   app.post('/api/discard', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { files } = req.body;
       const result = await gitAPI.discardChanges(files);
       res.json(result);
@@ -234,6 +254,7 @@ export function startServer(options = {}) {
 
   app.get('/api/remotes', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const remotes = await gitAPI.getRemotes();
       res.json(remotes);
     } catch (error) {
@@ -243,6 +264,7 @@ export function startServer(options = {}) {
 
   app.post('/api/fetch', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const result = await gitAPI.fetch();
       res.json(result);
     } catch (error) {
@@ -252,6 +274,7 @@ export function startServer(options = {}) {
 
   app.post('/api/pull', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { rebase } = req.body;
       const result = await gitAPI.pull(rebase);
       res.json(result);
@@ -262,6 +285,7 @@ export function startServer(options = {}) {
 
   app.post('/api/push', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { force, setUpstream } = req.body;
       const result = await gitAPI.push(force, setUpstream);
       res.json(result);
@@ -272,6 +296,7 @@ export function startServer(options = {}) {
 
   app.get('/api/config', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const config = await gitAPI.getConfig();
       res.json(config);
     } catch (error) {
@@ -281,6 +306,7 @@ export function startServer(options = {}) {
 
   app.post('/api/reset', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { hash, mode } = req.body;
       const result = await gitAPI.resetBranch(hash, mode || 'mixed');
       res.json(result);
@@ -291,9 +317,76 @@ export function startServer(options = {}) {
 
   app.post('/api/config', csrfProtection, async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
       const { key, value } = req.body;
       const result = await gitAPI.setConfig(key, value);
       res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // ── Repository management routes (no CSRF needed) ──────────────────────
+
+  // GET /api/repos — list all open repos
+  app.get('/api/repos', async (req, res) => {
+    try {
+      const repos = await repoManager.getAllRepos();
+      res.json(repos);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // POST /api/repos/open — open an existing git repo
+  app.post('/api/repos/open', async (req, res) => {
+    try {
+      const { path } = req.body;
+      if (!path) {
+        return res.status(400).json({ error: 'Path is required' });
+      }
+      const result = await repoManager.openRepo(path);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // POST /api/repos/clone — clone a new repo from a remote URL
+  app.post('/api/repos/clone', async (req, res) => {
+    try {
+      const { url, dir } = req.body;
+      if (!url || !dir) {
+        return res.status(400).json({ error: 'url and dir are required' });
+      }
+
+      // Basic URL validation to prevent command injection
+      if (typeof url !== 'string' || url.length > 2048) {
+        return res.status(400).json({ error: 'Invalid URL' });
+      }
+
+      // Prevent path traversal in dir
+      if (dir.includes('..')) {
+        return res.status(400).json({ error: 'Path traversal is not allowed' });
+      }
+
+      // Perform the clone
+      const git = simpleGit();
+      await git.clone(url, dir);
+
+      // Register the cloned repo
+      const result = await repoManager.openRepo(dir);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // DELETE /api/repos/:id — close/remove a repo
+  app.delete('/api/repos/:id', async (req, res) => {
+    try {
+      repoManager.removeRepo(req.params.id);
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
     }

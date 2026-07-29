@@ -1,7 +1,10 @@
 /**
  * API composable — fetches from the actual backend with CSRF protection.
- * Provides { get, post } interface used by stores and components.
+ * Provides { get, post, del } interface used by stores and components.
+ * Automatically appends repoId from the repos store when available.
  */
+
+import { useReposStore } from '../stores/repos.js'
 
 let csrfToken = null
 let csrfPromise = null
@@ -25,16 +28,30 @@ async function ensureCsrfToken() {
 }
 
 export function useApi() {
+  // Get active repo ID from the repos store at call time
+  let repoId = null
+  try {
+    const reposStore = useReposStore()
+    repoId = reposStore.activeRepoId
+  } catch (_) {
+    // Store might not be initialized yet (e.g., during startup)
+  }
+
   return {
     async get(url) {
-      const response = await fetch(`/api${url}`)
+      const effectiveUrl = repoId
+        ? `${url}${url.includes('?') ? '&' : '?'}repoId=${repoId}`
+        : url
+      const response = await fetch(`/api${effectiveUrl}`)
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
         throw new Error(err.error || `API error: ${response.status}`)
       }
       return await response.json()
     },
+
     async post(url, body) {
+      const effectiveBody = repoId ? { ...body, repoId } : body
       const token = await ensureCsrfToken()
       const response = await fetch(`/api${url}`, {
         method: 'POST',
@@ -42,8 +59,21 @@ export function useApi() {
           'Content-Type': 'application/json',
           'X-CSRF-Token': token,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(effectiveBody),
       })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || `API error: ${response.status}`)
+      }
+      return await response.json()
+    },
+
+    async del(url) {
+      // DELETE requests don't need CSRF (repo management endpoints)
+      const effectiveUrl = repoId
+        ? `${url}${url.includes('?') ? '&' : '?'}repoId=${repoId}`
+        : url
+      const response = await fetch(`/api${effectiveUrl}`, { method: 'DELETE' })
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
         throw new Error(err.error || `API error: ${response.status}`)

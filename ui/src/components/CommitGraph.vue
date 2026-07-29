@@ -181,7 +181,14 @@ function selectCommit(commit) {
   selectedCommit.value = commit
 }
 
-defineExpose({ selectedCommit })
+function selectCommitByHash(hash) {
+  const commit = commits.value.find(c => c.fullHash === hash || c.id === hash)
+  if (commit) {
+    selectCommit(commit)
+  }
+}
+
+defineExpose({ selectedCommit, selectCommitByHash })
 
 // ═══════════════════════════════════════════════════════════════
 //  LANE ROUTING (Track Allocation) — parent-hash based

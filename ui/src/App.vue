@@ -1,13 +1,18 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import Sidebar from './components/Sidebar.vue'
+import TabsBar from './components/TabsBar.vue'
 import ChangesView from './components/ChangesView.vue'
 import CommitGraph from './components/CommitGraph.vue'
 import DetailsPanel from './components/DetailsPanel.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import { useUiStore } from './stores/ui.js'
+import { useReposStore } from './stores/repos.js'
+import { useStatusStore } from './stores/status.js'
 
 const uiStore = useUiStore()
+const reposStore = useReposStore()
+const statusStore = useStatusStore()
 
 // --- Resizer: Vertical (sidebar width) ---
 const sidebarRef = ref(null)
@@ -45,6 +50,13 @@ const selectedCommit = computed(() => {
   return commitGraphRef.value?.selectedCommit || null
 })
 
+// Navigate to a parent commit by hash
+function handleNavigateToCommit(hash) {
+  if (commitGraphRef.value?.selectCommitByHash) {
+    commitGraphRef.value.selectCommitByHash(hash)
+  }
+}
+
 // --- Global mouse handlers ---
 function onMouseMove(e) {
   if (isDraggingV) {
@@ -79,6 +91,15 @@ function onMouseUp() {
 onMounted(() => {
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('mouseup', onMouseUp)
+  reposStore.fetchRepos()
+})
+
+// Watch for active repo changes to refresh data
+watch(() => reposStore.activeRepoId, () => {
+  if (reposStore.activeRepoId) {
+    statusStore.fetchStatus()
+    uiStore.triggerCommitRefresh()
+  }
 })
 
 onUnmounted(() => {
@@ -162,18 +183,7 @@ onUnmounted(() => {
   </div>
 
   <!-- Repository Tabs Bar -->
-  <div class="tabs-bar">
-    <div class="tab">
-      <span>Fork*</span>
-      <span style="font-size: 10px; color: #888;">⚙</span>
-    </div>
-    <div class="tab active">
-      <span>TypeScript*</span>
-    </div>
-    <div class="tab-inactive">react*</div>
-    <div class="tab-inactive">WpfOfficeTheme</div>
-    <div style="margin-left: auto; padding-right: 10px; font-weight: bold; cursor: pointer; color: #666;">+</div>
-  </div>
+  <TabsBar />
 
   <!-- Main Container -->
   <div class="main-container">
@@ -211,7 +221,10 @@ onUnmounted(() => {
 
       <!-- Lower: Details Panel -->
       <div v-if="uiStore.currentView !== 'changes'" class="details-panel" ref="detailsPanelRef" id="detailsPanel">
-        <DetailsPanel :selectedCommit="selectedCommit" />
+        <DetailsPanel
+          :selectedCommit="selectedCommit"
+          @navigate-to-commit="handleNavigateToCommit"
+        />
       </div>
     </div>
   </div>

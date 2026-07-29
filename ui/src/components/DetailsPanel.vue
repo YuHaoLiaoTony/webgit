@@ -8,6 +8,8 @@ const props = defineProps({
   selectedCommit: { type: Object, default: null },
 })
 
+const emit = defineEmits(['navigate-to-commit'])
+
 // ─── Tabs ──────────────────────────────────────────────────────────────
 const activeTab = ref('changes')
 
@@ -72,6 +74,8 @@ const commitDetailMap = {
       { path: 'package-lock.json', status: 'modified', additions: 142, deletions: 98 },
       { path: 'package.json', status: 'modified', additions: 2, deletions: 2 },
     ],
+    refs: 'origin/master, master',
+    parents: ['411c6d0e8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   2: {
     shortHash: '411c6d0',
@@ -85,6 +89,7 @@ const commitDetailMap = {
       { path: 'src/compiler/types.ts', status: 'modified', additions: 8, deletions: 1 },
       { path: 'tests/cases/compiler/templateLiteralTypes.ts', status: 'modified', additions: 34, deletions: 0 },
     ],
+    parents: ['d616d8fe8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   3: {
     shortHash: 'd616d8f',
@@ -96,6 +101,7 @@ const commitDetailMap = {
     files: [
       { path: 'package-lock.json', status: 'modified', additions: 86, deletions: 72 },
     ],
+    parents: ['ec1490fe8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   4: {
     shortHash: 'ec1490f',
@@ -108,6 +114,7 @@ const commitDetailMap = {
       { path: 'src/compiler/checker.ts', status: 'modified', additions: 22, deletions: 6 },
       { path: 'src/compiler/binder.ts', status: 'modified', additions: 4, deletions: 4 },
     ],
+    parents: ['5e2509be8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   5: {
     shortHash: '5e2509b',
@@ -119,6 +126,7 @@ const commitDetailMap = {
     files: [
       { path: 'tests/baselines/local/typeFacts.js', status: 'modified', additions: 12, deletions: 8 },
     ],
+    parents: ['24c6da9e8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   6: {
     shortHash: '24c6da9',
@@ -130,6 +138,8 @@ const commitDetailMap = {
     files: [
       { path: 'tests/cases/compiler/templateLiteralPatterns.ts', status: 'added', additions: 56, deletions: 0 },
     ],
+    refs: 'feature/template-patterns',
+    parents: ['f9e8d7ce8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   7: {
     shortHash: 'f9e8d7c',
@@ -141,6 +151,7 @@ const commitDetailMap = {
     files: [
       { path: 'tests/baselines/local/typeFacts.snap', status: 'modified', additions: 18, deletions: 14 },
     ],
+    parents: ['3c3fbbde8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   8: {
     shortHash: '3c3fbbd',
@@ -152,6 +163,8 @@ const commitDetailMap = {
     files: [
       { path: 'src/compiler/checker.ts', status: 'modified', additions: 5, deletions: 2 },
     ],
+    refs: 'tag: v4.2.0-beta',
+    parents: ['d5779c7e8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7', 'f9e8d7ce8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   9: {
     shortHash: 'd5779c7',
@@ -164,6 +177,7 @@ const commitDetailMap = {
       { path: 'src/services/completions.ts', status: 'modified', additions: 28, deletions: 5 },
       { path: 'src/harness/unittests/completions.ts', status: 'modified', additions: 42, deletions: 0 },
     ],
+    parents: ['242e020e8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   10: {
     shortHash: '242e020',
@@ -175,6 +189,7 @@ const commitDetailMap = {
     files: [
       { path: 'tests/baselines/local/completions.js', status: 'modified', additions: 6, deletions: 6 },
     ],
+    parents: ['86429aae330aa076f9c776c785cd47c69044187a'],
   },
   11: {
     shortHash: '86429aa',
@@ -188,6 +203,7 @@ const commitDetailMap = {
       { path: 'src/loc/lcl/ita/diagnosticMessages/diagnosticMessages.generated.json.lcl', status: 'modified', additions: 65, deletions: 15 },
       { path: 'src/loc/lcl/deu/diagnosticMessages/diagnosticMessages.generated.json.lcl', status: 'added', additions: 92, deletions: 0 },
     ],
+    parents: ['dbcbe93e8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   12: {
     shortHash: 'dbcbe93',
@@ -199,6 +215,7 @@ const commitDetailMap = {
     files: [
       { path: 'src/loc/lcl/fra/diagnosticMessages/diagnosticMessages.generated.json.lcl', status: 'modified', additions: 45, deletions: 6 },
     ],
+    parents: ['5adb55ee8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   13: {
     shortHash: '5adb55e',
@@ -211,6 +228,7 @@ const commitDetailMap = {
       { path: 'src/services/services.ts', status: 'modified', additions: 18, deletions: 2 },
       { path: 'src/services/completions.ts', status: 'modified', additions: 7, deletions: 1 },
     ],
+    parents: ['a1b2c3de8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   14: {
     shortHash: 'a1b2c3d',
@@ -223,6 +241,8 @@ const commitDetailMap = {
       { path: 'package.json', status: 'modified', additions: 1, deletions: 1 },
       { path: 'package-lock.json', status: 'modified', additions: 1, deletions: 1 },
     ],
+    refs: 'tag: v4.2.0',
+    parents: ['0000001e8a7c5fc2b2e2b8a9c0b1c2d3e4f5a6b7'],
   },
   15: {
     shortHash: '0000001',
@@ -232,6 +252,7 @@ const commitDetailMap = {
     title: 'Initial commit',
     body: 'First commit of the TypeScript repository.',
     files: [],
+    parents: [],
   },
 }
 
@@ -378,6 +399,26 @@ function copySHA() {
   })
 }
 
+// ─── Parent commit details ────────────────────────────────────────────
+const parentCommits = computed(() => {
+  if (!commitDetail.value || !props.selectedCommit?.parents) return []
+  return props.selectedCommit.parents.map((ph, idx) => ({
+    hash: ph,
+    shortHash: ph.substring(0, 7),
+    index: idx,
+  }))
+})
+
+// ─── Refs display ──────────────────────────────────────────────────────
+const commitRefs = computed(() => {
+  if (!props.selectedCommit) return { local: [], remote: [], tags: [] }
+  return props.selectedCommit._labels || { local: [], remote: [], tags: [] }
+})
+
+function selectParent(hash) {
+  emit('navigate-to-commit', hash)
+}
+
 // ─── Stats ─────────────────────────────────────────────────────────────
 const stats = computed(() => {
   if (!commitDetail.value) return { files: 0, additions: 0, deletions: 0 }
@@ -442,6 +483,11 @@ const statusLabel = { modified: 'M', added: 'A', deleted: 'D', renamed: 'R' }
     <div class="details-tabs" v-if="commitDetail">
       <div
         class="details-tab"
+        :class="{ active: activeTab === 'commit' }"
+        @click="setTab('commit')"
+      >Commit</div>
+      <div
+        class="details-tab"
         :class="{ active: activeTab === 'changes' }"
         @click="setTab('changes')"
       >Changes</div>
@@ -459,6 +505,90 @@ const statusLabel = { modified: 'M', added: 'A', deleted: 'D', renamed: 'R' }
 
     <!-- ── Tab Content ── -->
     <div class="details-content-scroll" v-if="commitDetail">
+      <!-- Commit Tab -->
+      <div v-show="activeTab === 'commit'" class="tab-content-commit">
+        <!-- AUTHOR -->
+        <div class="commit-section">
+          <div class="commit-section-header">
+            <span class="section-icon">👤</span>
+            <span class="section-title">AUTHOR</span>
+          </div>
+          <div class="commit-section-body">
+            <div class="commit-author-row">
+              <div
+                class="commit-author-avatar"
+                :style="{ backgroundColor: authorInfo?.color || '#888' }"
+              >
+                {{ authorInfo?.initials || '?' }}
+              </div>
+              <div class="commit-author-details">
+                <div class="commit-author-name">{{ authorInfo?.name || 'Unknown' }}</div>
+                <div class="commit-author-email">{{ authorInfo?.email || '' }}</div>
+                <div class="commit-author-date">{{ commitDetail.date }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REFS -->
+        <div class="commit-section">
+          <div class="commit-section-header">
+            <span class="section-icon">🌿</span>
+            <span class="section-title">REFS</span>
+          </div>
+          <div class="commit-section-body">
+            <div v-if="commitRefs.local.length > 0 || commitRefs.remote.length > 0 || commitRefs.tags.length > 0" class="commit-refs-list">
+              <span v-for="lb in commitRefs.local" :key="'l-' + lb" class="badge-branch-commit">✓ {{ lb }}</span>
+              <span v-for="lb in commitRefs.remote" :key="'r-' + lb" class="badge-remote-commit">{{ lb }}</span>
+              <span v-for="lb in commitRefs.tags" :key="'t-' + lb" class="badge-tag-commit">🏷 {{ lb }}</span>
+            </div>
+            <div v-else class="commit-refs-empty">No branch or tag references</div>
+          </div>
+        </div>
+
+        <!-- SHA -->
+        <div class="commit-section">
+          <div class="commit-section-header">
+            <span class="section-icon">🔑</span>
+            <span class="section-title">SHA</span>
+          </div>
+          <div class="commit-section-body">
+            <div class="commit-sha-row" @click="copySHA" title="Click to copy SHA">
+              <code class="commit-sha-full">{{ commitDetail.sha }}</code>
+              <span class="commit-sha-copy">📋</span>
+            </div>
+            <div class="commit-sha-short">{{ commitDetail.shortHash }}</div>
+          </div>
+        </div>
+
+        <!-- PARENTS -->
+        <div class="commit-section">
+          <div class="commit-section-header">
+            <span class="section-icon">🔗</span>
+            <span class="section-title">PARENTS</span>
+          </div>
+          <div class="commit-section-body">
+            <div v-if="parentCommits.length > 0" class="commit-parents-list">
+              <div
+                v-for="parent in parentCommits"
+                :key="parent.hash"
+                class="commit-parent-item"
+                @click="selectParent(parent.hash)"
+                title="Navigate to parent commit"
+              >
+                <span class="parent-index" v-if="parentCommits.length > 1">{{ parent.index + 1 }}.</span>
+                <code class="parent-hash">{{ parent.hash }}</code>
+                <span class="parent-short">{{ parent.shortHash }}</span>
+                <span class="parent-nav-icon">↗</span>
+              </div>
+            </div>
+            <div v-else class="commit-parents-empty">
+              <span class="parent-root-icon">🌱</span> Root commit — no parents
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Changes Tab -->
       <div v-show="activeTab === 'changes'" class="tab-content-changes">
         <!-- Filter toolbar -->
@@ -1068,6 +1198,242 @@ const statusLabel = { modified: 'M', added: 'A', deleted: 'D', renamed: 'R' }
   color: #aaa;
   font-style: italic;
   font-size: 11px;
+}
+
+/* ── Commit Tab ── */
+.tab-content-commit {
+  padding: 10px 14px;
+}
+
+.commit-section {
+  margin-bottom: 14px;
+}
+
+.commit-section-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.section-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: bold;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.commit-section-body {
+  margin-left: 21px;
+}
+
+/* AUTHOR */
+.commit-author-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.commit-author-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.commit-author-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.commit-author-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+}
+
+.commit-author-email {
+  font-size: 11px;
+  color: #888;
+  word-break: break-all;
+}
+
+.commit-author-date {
+  font-size: 11px;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* REFS */
+.commit-refs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge-branch-commit {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: #fff;
+  border: 1px solid #4a90e2;
+  color: #333;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.badge-remote-commit {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f0f6fc;
+  border: 1px solid #4a90e2;
+  color: #4a90e2;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.badge-tag-commit {
+  display: inline-flex;
+  align-items: center;
+  background-color: #fff2cc;
+  border: 1px solid #d6b656;
+  color: #333;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.commit-refs-empty {
+  font-size: 11px;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* SHA */
+.commit-sha-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.commit-sha-row:hover {
+  background-color: #f0f6fc;
+}
+
+.commit-sha-full {
+  font-family: "SF Mono", "Consolas", "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  color: #007acc;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.commit-sha-copy {
+  font-size: 11px;
+  opacity: 0.4;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.commit-sha-row:hover .commit-sha-copy {
+  opacity: 1;
+}
+
+.commit-sha-short {
+  font-family: "SF Mono", "Consolas", "Liberation Mono", Menlo, monospace;
+  font-size: 10px;
+  color: #aaa;
+  padding-left: 6px;
+}
+
+/* PARENTS */
+.commit-parents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commit-parent-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.commit-parent-item:hover {
+  background-color: #f0f6fc;
+}
+
+.parent-index {
+  font-size: 10px;
+  color: #888;
+  font-weight: 600;
+  min-width: 14px;
+  flex-shrink: 0;
+}
+
+.parent-hash {
+  font-family: "SF Mono", "Consolas", "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  color: #007acc;
+  flex: 1;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.parent-short {
+  font-family: "SF Mono", "Consolas", "Liberation Mono", Menlo, monospace;
+  font-size: 10px;
+  color: #aaa;
+  flex-shrink: 0;
+}
+
+.parent-nav-icon {
+  font-size: 11px;
+  color: #999;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.commit-parent-item:hover .parent-nav-icon {
+  opacity: 1;
+}
+
+.commit-parents-empty {
+  font-size: 11px;
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.parent-root-icon {
+  font-size: 14px;
 }
 
 /* ── History Tab ── */

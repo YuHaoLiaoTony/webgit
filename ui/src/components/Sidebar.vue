@@ -1,12 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useUiStore } from '../stores/ui.js'
 import { useStatusStore } from '../stores/status.js'
+import { useReposStore } from '../stores/repos.js'
 import { useApi } from '../composables/useApi.js'
 import { showToast } from '../composables/useToast.js'
 
 const uiStore = useUiStore()
 const statusStore = useStatusStore()
+const reposStore = useReposStore()
 
 // Collapsible groups state
 const collapsedGroups = ref({
@@ -66,11 +68,19 @@ onMounted(() => {
   fetchBranches()
   statusStore.fetchStatus()
 })
+
+// Re-fetch when active repo changes
+watch(() => reposStore.activeRepoId, () => {
+  if (reposStore.activeRepoId) {
+    fetchBranches()
+    statusStore.fetchStatus()
+  }
+})
 </script>
 
 <template>
   <div class="sidebar-header">
-    <span>TypeScript</span>
+    <span>{{ reposStore.activeRepo?.name || 'Repository' }}</span>
     <span style="font-size: 10px; cursor: pointer;">⚙</span>
   </div>
 
