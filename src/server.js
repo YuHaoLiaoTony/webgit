@@ -283,6 +283,17 @@ export async function startServer(options = {}) {
     }
   });
 
+  app.post('/api/stash', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { message, includeUntracked } = req.body;
+      const result = await gitAPI.stash({ message, includeUntracked });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   app.post('/api/push', csrfProtection, async (req, res) => {
     try {
       const gitAPI = getGitAPI(req);

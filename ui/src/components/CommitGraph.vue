@@ -69,6 +69,7 @@ const pushDialog = ref({ visible: false })
 
 function showContextMenu(event, commit) {
   event.preventDefault()
+  selectCommit(commit)
   contextMenu.value = {
     visible: true,
     x: event.clientX,

@@ -8,6 +8,7 @@ import DetailsPanel from './components/DetailsPanel.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import PushDialog from './components/PushDialog.vue'
 import PullDialog from './components/PullDialog.vue'
+import StashDialog from './components/StashDialog.vue'
 import { useUiStore } from './stores/ui.js'
 import { useReposStore } from './stores/repos.js'
 import { useStatusStore } from './stores/status.js'
@@ -81,6 +82,24 @@ function closePullDialog() {
 
 function onPulled() {
   // Refresh status after pull
+  statusStore.fetchStatus()
+}
+
+// ─── Stash Dialog ───────────────────────────────────────────────────────
+const showStashDialog = ref(false)
+
+function openStashDialog() {
+  // Refresh status before showing dialog
+  statusStore.fetchStatus()
+  showStashDialog.value = true
+}
+
+function closeStashDialog() {
+  showStashDialog.value = false
+}
+
+function onStashed() {
+  // Refresh status after stash
   statusStore.fetchStatus()
 }
 
@@ -179,7 +198,7 @@ onUnmounted(() => {
       <span class="toolbar-label">Push</span>
     </div>
     <div class="toolbar-divider"></div>
-    <div class="toolbar-btn">
+    <div class="toolbar-btn" @click="openStashDialog">
       <span class="toolbar-icon">📦</span>
       <span class="toolbar-label">Stash</span>
     </div>
@@ -278,5 +297,12 @@ onUnmounted(() => {
     :show="showPullDialog"
     @close="closePullDialog"
     @pulled="onPulled"
+  />
+
+  <!-- Stash Dialog -->
+  <StashDialog
+    :show="showStashDialog"
+    @close="closeStashDialog"
+    @stashed="onStashed"
   />
 </template>

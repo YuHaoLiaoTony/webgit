@@ -479,6 +479,21 @@ export function createGitAPI(repoPath) {
       return { success: true, hash, mode };
     },
 
+    async stash({ message, includeUntracked } = {}) {
+      const args = ['push'];
+
+      if (includeUntracked) {
+        args.push('-u');
+      }
+
+      if (message && message.trim()) {
+        args.push('-m', message.trim());
+      }
+
+      await git.stash(args);
+      return { success: true };
+    },
+
     async setConfig(key, value) {
       // Whitelist of allowed config keys to prevent command injection
       const allowedKeys = [
