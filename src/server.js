@@ -277,6 +277,11 @@ export function startServer(options = {}) {
     }
   });
 
+  // SPA fallback - serve index.html for any unmatched route (so browser refresh works on any path)
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, '../public/index.html'));
+  });
+
   const server = app.listen(port, '127.0.0.1', () => {
     const url = `http://localhost:${port}`;
     console.log(`\n  WebGit - Git Repository Viewer\n`);

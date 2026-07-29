@@ -17,6 +17,7 @@
     "dev": "node --watch src/server.js",
     "css:build": "postcss public/css/src/style.css -o public/css/style.css",
     "css:watch": "postcss public/css/src/style.css -o public/css/style.css --watch",
+    "deploy": "bash scripts/deploy.sh",
     "test": "playwright test",
     "test:ui": "playwright test --ui"
   },
