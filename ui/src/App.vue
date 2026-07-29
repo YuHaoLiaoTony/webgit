@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import Sidebar from './components/Sidebar.vue'
 
 // --- Resizer: Vertical (sidebar width) ---
 const sidebarRef = ref(null)
@@ -34,13 +35,6 @@ const activeDetailsTab = ref('changes')
 
 function setDetailsTab(tab) {
   activeDetailsTab.value = tab
-}
-
-// Sidebar mode (changes / commits)
-const sidebarMode = ref('commits')
-
-function setSidebarMode(mode) {
-  sidebarMode.value = mode
 }
 
 // --- Global mouse handlers ---
@@ -177,58 +171,7 @@ onUnmounted(() => {
   <div class="main-container">
     <!-- Left Sidebar -->
     <div class="sidebar" ref="sidebarRef" id="sidebar">
-      <div class="sidebar-header">
-        <span>TypeScript</span>
-        <span style="font-size: 10px;">⚙</span>
-      </div>
-      <div
-        class="sidebar-item"
-        :class="{ selected: sidebarMode === 'changes' }"
-        @click="setSidebarMode('changes')"
-      >
-        <span>📝</span> Changes (11)
-      </div>
-      <div
-        class="sidebar-item"
-        :class="{ selected: sidebarMode === 'commits' }"
-        @click="setSidebarMode('commits')"
-      >
-        <span>≡</span> All Commits
-      </div>
-
-      <div class="sidebar-search">
-        <span>🔍</span>
-        <input type="text" placeholder="Filter">
-      </div>
-
-      <div class="sidebar-group-title">
-        <span>▾ Starred</span>
-      </div>
-      <div class="sidebar-item">
-        <span>✓ master</span>
-        <span style="margin-left: auto; color: #ffca28;">☆</span>
-      </div>
-
-      <div class="sidebar-group-title">
-        <span>▾ Branches</span>
-      </div>
-      <div class="sidebar-item">🌿 editor-support-for-links</div>
-      <div class="sidebar-item">🌿 improve-uncalled-func...</div>
-      <div class="sidebar-item" style="font-weight: bold;">✓ master</div>
-      <div class="sidebar-item">🌿 release-4.1</div>
-
-      <div class="sidebar-group-title">
-        <span>▸ Remotes</span>
-      </div>
-      <div class="sidebar-group-title">
-        <span>▸ Tags</span>
-      </div>
-      <div class="sidebar-group-title">
-        <span>Stashes</span>
-      </div>
-      <div class="sidebar-group-title">
-        <span>Submodules</span>
-      </div>
+      <Sidebar />
     </div>
 
     <!-- Vertical Splitter Bar for Sidebar -->
