@@ -306,6 +306,24 @@ export function createGitAPI(repoPath) {
       return await git.diff(args);
     },
 
+    async getStagedFileStats() {
+      const output = await git.diff(['--cached', '--numstat']);
+      if (!output || !output.trim()) return [];
+      return output.trim().split('\n').filter(Boolean).map(line => {
+        const parts = line.split('\t');
+        const ins = parts[0];
+        const del = parts[1];
+        const path = parts.slice(2).join('\t');
+        const isBinary = ins === '-' && del === '-';
+        return {
+          path,
+          ins: isBinary ? 0 : parseInt(ins || 0),
+          del: isBinary ? 0 : parseInt(del || 0),
+          binary: isBinary,
+        };
+      });
+    },
+
     async stageFiles(files) {
       if (files && files.length > 0) {
         validateFilePaths(files);

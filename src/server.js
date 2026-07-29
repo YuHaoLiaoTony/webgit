@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
@@ -255,7 +256,7 @@ export async function startServer(options = {}) {
 
   app.post('/api/ai-commit-generate', csrfProtection, async (req, res) => {
     try {
-      const { stagedFiles } = req.body;
+      const { stagedFiles, customPrompt } = req.body;
 
       if (!stagedFiles || stagedFiles.length === 0) {
         return res.status(400).json({ error: 'No staged files' });
@@ -266,7 +267,7 @@ export async function startServer(options = {}) {
       }
 
       const gitAPI = getGitAPI(req);
-      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath);
+      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath, customPrompt);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });

@@ -1,8 +1,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStatusStore } from '../stores/status.js'
-import { useApi } from '../../composables/useApi.js'
-import { useToast } from '../../composables/useToast.js'
+import { useApi } from '../composables/useApi.js'
+import { useToast } from '../composables/useToast.js'
 import DiffViewer from './DiffViewer.vue'
 
 const statusStore = useStatusStore()
@@ -136,6 +136,8 @@ const inlineCommitError = ref(null)
 
 // ─── AI commit message generation ────────────────────────────────────
 const aiGenerating = ref(false)
+const customPrompt = ref('')
+const showCustomPrompt = ref(false)
 
 async function generateAIMessage() {
   const { post } = useApi()
@@ -146,14 +148,19 @@ async function generateAIMessage() {
     return
   }
 
+  inlineCommitError.value = null
   aiGenerating.value = true
   try {
-    const result = await post('/ai-commit-generate', { stagedFiles: statusStore.stagedFiles })
+    const result = await post('/ai-commit-generate', {
+      stagedFiles: statusStore.stagedFiles,
+      customPrompt: customPrompt.value.trim() || undefined,
+    })
     commitTitle.value = result.title
     commitBody.value = result.body
     toast.showToast('Commit message generated', 'success')
   } catch (e) {
-    toast.showToast('AI generation failed: ' + e.message, 'error')
+    inlineCommitError.value = e.message
+    toast.showToast('AI generation failed', 'error')
   } finally {
     aiGenerating.value = false
   }
@@ -669,6 +676,19 @@ onUnmounted(() => {
                 @click="generateAIMessage"
                 :title="aiGenerating ? 'Generating…' : 'Generate commit message with AI'"
               >{{ aiGenerating ? '⏳' : '✨' }}</button>
+              <button
+                class="cv-ai-prompt-btn"
+                @click="showCustomPrompt = !showCustomPrompt"
+                :title="showCustomPrompt ? 'Hide custom prompt' : 'Add custom prompt'"
+              >📝</button>
+            </div>
+            <div v-if="showCustomPrompt" class="cv-custom-prompt-wrap">
+              <textarea
+                v-model="customPrompt"
+                class="cv-custom-prompt-input"
+                placeholder="自訂提示詞（選填）：例如「請用繁體中文」、「重點放效能改善」…"
+                rows="2"
+              ></textarea>
             </div>
             <textarea
               v-model="commitBody"
@@ -1050,5 +1070,49 @@ onUnmounted(() => {
   border-radius: 4px;
   color: #cb2431;
   font-size: 11px;
+}
+
+.cv-ai-prompt-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  transition: background-color 0.15s;
+  flex-shrink: 0;
+}
+
+.cv-ai-prompt-btn:hover {
+  background-color: #e8eaec;
+}
+
+.cv-custom-prompt-wrap {
+  padding: 4px 0;
+}
+
+.cv-custom-prompt-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px dashed #bbb;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cv-custom-prompt-input:focus {
+  border-color: #007acc;
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
 }
 </style>
