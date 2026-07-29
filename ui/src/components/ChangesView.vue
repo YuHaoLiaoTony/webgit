@@ -1,6 +1,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStatusStore } from '../stores/status.js'
+import { useApi } from '../../composables/useApi.js'
+import { useToast } from '../../composables/useToast.js'
 import DiffViewer from './DiffViewer.vue'
 
 const statusStore = useStatusStore()
@@ -131,6 +133,31 @@ const commitTitle = ref('')
 const commitBody = ref('')
 const inlineCommitting = ref(false)
 const inlineCommitError = ref(null)
+
+// ─── AI commit message generation ────────────────────────────────────
+const aiGenerating = ref(false)
+
+async function generateAIMessage() {
+  const { post } = useApi()
+  const toast = useToast()
+
+  if (stagedFiles.value.length === 0) {
+    toast.showToast('No files staged', 'warning')
+    return
+  }
+
+  aiGenerating.value = true
+  try {
+    const result = await post('/ai-commit-generate', { stagedFiles: statusStore.stagedFiles })
+    commitTitle.value = result.title
+    commitBody.value = result.body
+    toast.showToast('Commit message generated', 'success')
+  } catch (e) {
+    toast.showToast('AI generation failed: ' + e.message, 'error')
+  } finally {
+    aiGenerating.value = false
+  }
+}
 
 const isCommitDisabled = computed(() => inlineCommitting.value || !commitTitle.value.trim())
 
@@ -629,12 +656,20 @@ onUnmounted(() => {
         <div class="cv-inline-commit" ref="commitPanelRef" @keydown="onDiffKeydown">
           <div class="cv-inline-commit-header" ref="commitHeaderRef" @mousedown="onCommitResizerMouseDown">Commit</div>
           <div class="cv-inline-commit-body">
-            <input
-              v-model="commitTitle"
-              class="cv-inline-commit-title"
-              type="text"
-              placeholder="Commit title…"
-            />
+            <div class="cv-inline-commit-title-row">
+              <input
+                v-model="commitTitle"
+                class="cv-inline-commit-title"
+                type="text"
+                placeholder="Commit title…"
+              />
+              <button
+                class="cv-ai-btn"
+                :disabled="aiGenerating"
+                @click="generateAIMessage"
+                :title="aiGenerating ? 'Generating…' : 'Generate commit message with AI'"
+              >{{ aiGenerating ? '⏳' : '✨' }}</button>
+            </div>
             <textarea
               v-model="commitBody"
               class="cv-inline-commit-body-input"
@@ -911,8 +946,15 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.cv-inline-commit-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
 .cv-inline-commit-title {
-  width: 100%;
+  flex: 1;
   padding: 6px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -925,6 +967,32 @@ onUnmounted(() => {
 .cv-inline-commit-title:focus {
   border-color: #007acc;
   box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+.cv-ai-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: background-color 0.15s;
+}
+
+.cv-ai-btn:hover:not(:disabled) {
+  background-color: #e8eaec;
+}
+
+.cv-ai-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .cv-inline-commit-body-input {

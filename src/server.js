@@ -2,6 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
 import { createRepoManager } from './repoManager.js';
+import { generateCommitMessage } from './ai.js';
 import simpleGit from 'simple-git';
 import { randomBytes } from 'crypto';
 
@@ -246,6 +247,26 @@ export async function startServer(options = {}) {
       const gitAPI = getGitAPI(req);
       const { message } = req.body;
       const result = await gitAPI.commit(message);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  app.post('/api/ai-commit-generate', csrfProtection, async (req, res) => {
+    try {
+      const { stagedFiles } = req.body;
+
+      if (!stagedFiles || stagedFiles.length === 0) {
+        return res.status(400).json({ error: 'No staged files' });
+      }
+
+      if (!process.env.OPENCODE_API_KEY) {
+        return res.status(400).json({ error: 'OpenCode API key not configured' });
+      }
+
+      const gitAPI = getGitAPI(req);
+      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
