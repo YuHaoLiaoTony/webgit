@@ -275,6 +275,9 @@ function getChevronPath(group) {
     ? 'M 23 11 L 28 14 L 23 17'   // collapsed (pointing right)
     : 'M 22 12 L 25 17 L 28 12'   // expanded (pointing down)
 }
+
+// Expose selected commit for parent access
+defineExpose({ selectedCommit })
 </script>
 
 <template>

@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import ChangesView from './components/ChangesView.vue'
 import CommitGraph from './components/CommitGraph.vue'
+import DetailsPanel from './components/DetailsPanel.vue'
+import ToastNotification from './components/ToastNotification.vue'
 import { useUiStore } from './stores/ui.js'
 
 // --- Resizer: Vertical (sidebar width) ---
@@ -33,12 +35,13 @@ function onResizerHMouseDown(e) {
   document.body.style.userSelect = 'none'
 }
 
-// --- Details Tab ---
-const activeDetailsTab = ref('changes')
+// --- CommitGraph ref (to access selected commit) ---
+const commitGraphRef = ref(null)
 
-function setDetailsTab(tab) {
-  activeDetailsTab.value = tab
-}
+// Compute selected commit from CommitGraph
+const selectedCommit = computed(() => {
+  return commitGraphRef.value?.selectedCommit || null
+})
 
 // --- Global mouse handlers ---
 function onMouseMove(e) {
@@ -190,7 +193,7 @@ onUnmounted(() => {
       <!-- Content Area: Conditional Views -->
       <div class="commit-list-container">
         <ChangesView v-if="uiStore.currentView === 'changes'" />
-        <CommitGraph v-else-if="uiStore.currentView === 'commits'" />
+        <CommitGraph v-else-if="uiStore.currentView === 'commits'" ref="commitGraphRef" />
         <div v-else style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 14px; font-style: italic; user-select: none;">
           Content Area — Coming Soon
         </div>
@@ -206,45 +209,11 @@ onUnmounted(() => {
 
       <!-- Lower: Details Panel -->
       <div class="details-panel" ref="detailsPanelRef" id="detailsPanel">
-        <div class="details-tabs">
-          <div
-            class="details-tab"
-            :class="{ active: activeDetailsTab === 'changes' }"
-            @click="setDetailsTab('changes')"
-          >Changes</div>
-          <div
-            class="details-tab"
-            :class="{ active: activeDetailsTab === 'filetree' }"
-            @click="setDetailsTab('filetree')"
-          >File Tree</div>
-          <div
-            class="details-tab"
-            :class="{ active: activeDetailsTab === 'history' }"
-            @click="setDetailsTab('history')"
-          >History</div>
-        </div>
-
-        <!-- Changes Tab -->
-        <div class="details-content" v-show="activeDetailsTab === 'changes'">
-          <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 13px; font-style: italic; user-select: none;">
-            Changes Details — Placeholder
-          </div>
-        </div>
-
-        <!-- File Tree Tab -->
-        <div class="details-content" v-show="activeDetailsTab === 'filetree'">
-          <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 13px; font-style: italic; user-select: none;">
-            File Tree — Placeholder
-          </div>
-        </div>
-
-        <!-- History Tab -->
-        <div class="details-content" v-show="activeDetailsTab === 'history'">
-          <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 13px; font-style: italic; user-select: none;">
-            Commit History — Placeholder
-          </div>
-        </div>
+        <DetailsPanel :selectedCommit="selectedCommit" />
       </div>
     </div>
   </div>
+
+  <!-- Toast Notifications (teleported to body) -->
+  <ToastNotification />
 </template>
