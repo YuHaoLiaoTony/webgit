@@ -64,8 +64,67 @@ async function fetchBranches() {
   }
 }
 
+// ─── Stashes ────────────────────────────────────────────────────────
+const stashes = ref([])
+const loadingStashes = ref(true)
+const expandedStashRefs = ref(new Set())
+
+function toggleStashExpand(ref) {
+  if (expandedStashRefs.value.has(ref)) {
+    expandedStashRefs.value.delete(ref)
+  } else {
+    expandedStashRefs.value.add(ref)
+  }
+}
+
+async function fetchStashes() {
+  try {
+    const { get } = useApi()
+    const data = await get('/stashes')
+    stashes.value = data
+  } catch (e) {
+    console.error('Failed to fetch stashes:', e)
+  } finally {
+    loadingStashes.value = false
+  }
+}
+
+async function applyStash(ref) {
+  try {
+    const { post } = useApi()
+    await post('/stash/apply', { ref })
+    showToast('success', `Applied ${ref}`)
+    await fetchStashes()
+    await statusStore.fetchStatus()
+  } catch (e) {
+    showToast('error', `Failed to apply stash: ${e.message}`, 6000)
+  }
+}
+
+async function dropStash(ref) {
+  try {
+    const { post } = useApi()
+    await post('/stash/drop', { ref })
+    showToast('success', `Dropped ${ref}`)
+    await fetchStashes()
+    await statusStore.fetchStatus()
+  } catch (e) {
+    showToast('error', `Failed to drop stash: ${e.message}`, 6000)
+  }
+}
+
+function getStashStatusIcon(status) {
+  switch (status) {
+    case 'added': return '➕'
+    case 'deleted': return '➖'
+    case 'renamed': return '✏️'
+    default: return '📝'
+  }
+}
+
 onMounted(() => {
   fetchBranches()
+  fetchStashes()
   statusStore.fetchStatus()
 })
 
@@ -73,6 +132,7 @@ onMounted(() => {
 watch(() => reposStore.activeRepoId, () => {
   if (reposStore.activeRepoId) {
     fetchBranches()
+    fetchStashes()
     statusStore.fetchStatus()
   }
 })
@@ -170,7 +230,48 @@ watch(() => reposStore.activeRepoId, () => {
   <!-- Stashes -->
   <div class="sidebar-group-title" @click="toggleGroup('stashes')">
     <span>{{ collapsedGroups.stashes ? '▸' : '▾' }} Stashes</span>
+    <span v-if="stashes.length > 0" class="sidebar-group-count">{{ stashes.length }}</span>
   </div>
+  <template v-if="!collapsedGroups.stashes">
+    <div v-if="loadingStashes" class="sidebar-item" style="color: #999; font-style: italic;">
+      <span>Loading...</span>
+    </div>
+    <div v-else-if="stashes.length === 0" class="sidebar-item" style="color: #999;">
+      <span>No stashes</span>
+    </div>
+    <template v-else v-for="stash in stashes" :key="stash.ref">
+      <div
+        class="sidebar-item sidebar-stash-parent"
+        :class="{ 'stash-expanded': expandedStashRefs.has(stash.ref) }"
+        @click="toggleStashExpand(stash.ref)"
+      >
+        <span class="sidebar-stash-toggle">{{ expandedStashRefs.has(stash.ref) ? '▾' : '▸' }}</span>
+        <span class="sidebar-stash-icon">📦</span>
+        <span class="sidebar-stash-label" :title="stash.message">
+          <span class="sidebar-stash-ref">{{ stash.ref }}</span>
+          <span v-if="stash.branch" class="sidebar-stash-branch">({{ stash.branch }})</span>
+          <span class="sidebar-stash-msg">{{ stash.message }}</span>
+        </span>
+        <span class="sidebar-stash-actions">
+          <span class="stash-action-btn stash-apply-btn" title="Apply stash" @click.stop="applyStash(stash.ref)">✓</span>
+          <span class="stash-action-btn stash-drop-btn" title="Drop stash" @click.stop="dropStash(stash.ref)">✕</span>
+        </span>
+      </div>
+      <template v-if="expandedStashRefs.has(stash.ref)">
+        <div v-if="stash.files.length === 0" class="sidebar-stash-file">
+          <span style="color: #999;">(no files)</span>
+        </div>
+        <div
+          v-for="file in stash.files"
+          :key="file.path"
+          class="sidebar-item sidebar-stash-file"
+        >
+          <span class="sidebar-stash-file-icon">{{ getStashStatusIcon(file.status) }}</span>
+          <span class="sidebar-stash-file-path">{{ file.path }}</span>
+        </div>
+      </template>
+    </template>
+  </template>
 
   <!-- Submodules -->
   <div class="sidebar-group-title" @click="toggleGroup('submodules')">

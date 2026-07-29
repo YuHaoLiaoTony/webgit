@@ -1691,3 +1691,138 @@ html, body {
 .diff-sbs-cell:first-child {
   border-right: 1px solid #e1e4e8;
 }
+
+/* ===== Sidebar Stash Tree ===== */
+.sidebar-stash-parent {
+  padding-left: 12px;
+  gap: 3px;
+  position: relative;
+}
+
+.sidebar-stash-parent.stash-expanded {
+  background-color: #eaedf2;
+}
+
+.sidebar-stash-toggle {
+  font-size: 8px;
+  color: #999;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.sidebar-stash-icon {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.sidebar-stash-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sidebar-stash-ref {
+  font-weight: 600;
+  font-size: 11px;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.sidebar-stash-branch {
+  font-size: 10px;
+  color: #007acc;
+  flex-shrink: 0;
+}
+
+.sidebar-stash-msg {
+  font-size: 10px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-stash-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.sidebar-stash-parent:hover .sidebar-stash-actions {
+  opacity: 1;
+}
+
+.stash-action-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.stash-apply-btn {
+  color: #28a745;
+  background: transparent;
+}
+
+.stash-apply-btn:hover {
+  background: #28a745;
+  color: #fff;
+}
+
+.stash-drop-btn {
+  color: #cb2431;
+  background: transparent;
+}
+
+.stash-drop-btn:hover {
+  background: #cb2431;
+  color: #fff;
+}
+
+.sidebar-stash-file {
+  padding-left: 42px !important;
+  font-size: 10px;
+  color: #666;
+  gap: 4px;
+}
+
+.sidebar-stash-file:hover {
+  background-color: #ebeef2;
+}
+
+.sidebar-stash-file-icon {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.sidebar-stash-file-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10px;
+}
+
+.sidebar-group-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: #999;
+  background: #e0e2e5;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-weight: normal;
+}

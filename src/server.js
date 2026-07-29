@@ -263,6 +263,16 @@ export async function startServer(options = {}) {
     }
   });
 
+  app.get('/api/stashes', async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const stashes = await gitAPI.getStashes();
+      res.json(stashes);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   app.get('/api/remotes', async (req, res) => {
     try {
       const gitAPI = getGitAPI(req);
@@ -299,6 +309,28 @@ export async function startServer(options = {}) {
       const gitAPI = getGitAPI(req);
       const { message, includeUntracked } = req.body;
       const result = await gitAPI.stash({ message, includeUntracked });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  app.post('/api/stash/apply', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { ref } = req.body;
+      const result = await gitAPI.applyStash(ref);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  app.post('/api/stash/drop', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { ref } = req.body;
+      const result = await gitAPI.dropStash(ref);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });

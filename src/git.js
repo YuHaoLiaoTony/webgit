@@ -402,6 +402,103 @@ export function createGitAPI(repoPath) {
       }));
     },
 
+    async getStashes() {
+      try {
+        // Get stash list with format: index|refname|branch|message
+        const raw = await git.raw([
+          'stash', 'list',
+          '--format=%gd|%gD|%gs'
+        ]);
+
+        if (!raw || !raw.trim()) {
+          return [];
+        }
+
+        const lines = raw.trim().split('\n').filter(Boolean);
+        const stashes = [];
+
+        for (const line of lines) {
+          const parts = line.split('|');
+          const ref = parts[0];              // stash@{0}
+          const refName = parts[1] || '';     // refs/stash
+          const message = parts.slice(2).join('|') || ''; // the message (may contain |)
+
+          // Parse branch name from message: "On branchName: ..."
+          let branch = '';
+          let cleanMessage = message;
+          const onMatch = message.match(/^On ([^:]+):\s*(.*)/);
+          if (onMatch) {
+            branch = onMatch[1];
+            cleanMessage = onMatch[2];
+          }
+
+          // Get list of files changed in this stash
+          let files = [];
+          try {
+            const showRaw = await git.raw(['stash', 'show', '--name-status', ref]);
+            if (showRaw && showRaw.trim()) {
+              const fileLines = showRaw.split('\n').filter(Boolean);
+              // First line is summary (e.g. " 2 files changed, 10 insertions(+), 2 deletions(-)")
+              // Subsequent lines are name-status
+              for (let i = 1; i < fileLines.length; i++) {
+                const fl = fileLines[i].trim();
+                if (!fl) continue;
+                // format: M\tpath or A\tpath or D\tpath
+                const status = fl[0];
+                const path = fl.substring(1).trim();
+                if (path) {
+                  let changeType = 'modified';
+                  if (status === 'A') changeType = 'added';
+                  else if (status === 'D') changeType = 'deleted';
+                  else if (status === 'R') changeType = 'renamed';
+                  files.push({ path, status: changeType });
+                }
+              }
+            }
+          } catch (_) {
+            // stash show may fail for empty stashes
+          }
+
+          stashes.push({
+            ref,
+            refName,
+            message: cleanMessage,
+            branch,
+            files,
+          });
+        }
+
+        return stashes;
+      } catch (e) {
+        // No stashes or not a repo
+        return [];
+      }
+    },
+
+    async applyStash(ref) {
+      if (typeof ref !== 'string' || !ref.trim()) {
+        throw new Error('Stash reference is required');
+      }
+      // Validate format: stash@{N}
+      if (!/^stash@\{\d+\}$/.test(ref)) {
+        throw new Error('Invalid stash reference format');
+      }
+      await git.stash(['apply', ref]);
+      return { success: true };
+    },
+
+    async dropStash(ref) {
+      if (typeof ref !== 'string' || !ref.trim()) {
+        throw new Error('Stash reference is required');
+      }
+      // Validate format: stash@{N}
+      if (!/^stash@\{\d+\}$/.test(ref)) {
+        throw new Error('Invalid stash reference format');
+      }
+      await git.stash(['drop', ref]);
+      return { success: true };
+    },
+
     async fetch() {
       await git.fetch();
       return { success: true };
