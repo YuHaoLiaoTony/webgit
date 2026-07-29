@@ -86,14 +86,83 @@ html, body {
   background-color: #e8e8e8;
 }
 
+.toolbar-btn-with-badge:hover,
+.toolbar-btn:hover .toolbar-icon-fetch {
+  color: #0066CC;
+}
+
 .toolbar-icon {
   font-size: 16px;
   margin-bottom: 2px;
 }
 
+.toolbar-icon-svg {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.toolbar-icon-pull {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0;
+  display: inline-block;
+  transform: rotate(180deg);
+}
+
+.toolbar-icon-fetch {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0;
+  display: inline-block;
+  color: #555;
+  transform: rotate(90deg);
+}
+
+.toolbar-icon-push {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0;
+}
+
 .toolbar-label {
   font-size: 10px;
   color: #666;
+}
+
+/* Toolbar button badge (Pull / Push count) */
+.toolbar-btn-with-badge {
+  position: relative;
+}
+
+.toolbar-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+}
+
+.toolbar-badge-behind {
+  background-color: #6c757d;
+}
+
+.toolbar-badge-ahead {
+  background-color: #007acc;
 }
 
 .toolbar-divider {

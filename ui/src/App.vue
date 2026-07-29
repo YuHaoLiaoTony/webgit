@@ -12,6 +12,8 @@ import StashDialog from './components/StashDialog.vue'
 import { useUiStore } from './stores/ui.js'
 import { useReposStore } from './stores/repos.js'
 import { useStatusStore } from './stores/status.js'
+import { useApi } from './composables/useApi.js'
+import { showToast } from './composables/useToast.js'
 
 const uiStore = useUiStore()
 const reposStore = useReposStore()
@@ -103,6 +105,16 @@ function onStashed() {
   statusStore.fetchStatus()
 }
 
+async function handleFetch() {
+  try {
+    const { post } = useApi()
+    await post('/fetch')
+    await statusStore.fetchStatus()
+  } catch (e) {
+    showToast('error', e.message, 6000)
+  }
+}
+
 // Navigate to a parent commit by hash
 function handleNavigateToCommit(hash) {
   if (commitGraphRef.value?.selectCommitByHash) {
@@ -185,16 +197,18 @@ onUnmounted(() => {
       <span class="toolbar-icon">⚡</span>
       <span class="toolbar-label">Quick Launch</span>
     </div>
-    <div class="toolbar-btn">
-      <span class="toolbar-icon">⇣</span>
+    <div class="toolbar-btn" @click="handleFetch">
+      <span class="toolbar-icon toolbar-icon-fetch">⤏</span>
       <span class="toolbar-label">Fetch</span>
     </div>
-    <div class="toolbar-btn" @click="openPullDialog">
-      <span class="toolbar-icon">⬇</span>
+    <div class="toolbar-btn toolbar-btn-with-badge" @click="openPullDialog">
+      <span class="toolbar-icon toolbar-icon-pull">⤴</span>
+      <span v-if="statusStore.behind > 0" class="toolbar-badge toolbar-badge-behind">{{ statusStore.behind }}</span>
       <span class="toolbar-label">Pull</span>
     </div>
-    <div class="toolbar-btn" @click="openPushDialog">
-      <span class="toolbar-icon">⬆</span>
+    <div class="toolbar-btn toolbar-btn-with-badge" @click="openPushDialog">
+      <span class="toolbar-icon toolbar-icon-push">⤴</span>
+      <span v-if="statusStore.ahead > 0" class="toolbar-badge toolbar-badge-ahead">{{ statusStore.ahead }}</span>
       <span class="toolbar-label">Push</span>
     </div>
     <div class="toolbar-divider"></div>
