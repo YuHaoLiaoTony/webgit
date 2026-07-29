@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import Sidebar from './components/Sidebar.vue'
+import ChangesView from './components/ChangesView.vue'
+import { useUiStore } from './stores/ui.js'
 
 // --- Resizer: Vertical (sidebar width) ---
 const sidebarRef = ref(null)
@@ -184,10 +186,11 @@ onUnmounted(() => {
 
     <!-- Main Content Area -->
     <div class="content-area">
-      <!-- Placeholder Content -->
+      <!-- Content Area: Conditional Views -->
       <div class="commit-list-container">
-        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 14px; font-style: italic; user-select: none;">
-          Content Area — Commit Graph / Changes View
+        <ChangesView v-if="uiStore.currentView === 'changes'" />
+        <div v-else style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 14px; font-style: italic; user-select: none;">
+          Content Area — Commit Graph (coming soon)
         </div>
       </div>
 
