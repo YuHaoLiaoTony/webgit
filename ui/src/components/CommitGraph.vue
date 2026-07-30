@@ -228,6 +228,20 @@ async function resetToHere(commit, mode) {
   }
 }
 
+// ── Checkout commit (detached HEAD) ──────────────────────────
+async function checkoutCommit(commit) {
+  const hash = commit.fullHash || commit.id
+  const { post } = useApi()
+  try {
+    await post('/branches/checkout', { branch: hash })
+    showToast('success', `🔀 Switched to commit ${commit.hash}`)
+    uiStore.triggerCommitRefresh()
+    statusStore.fetchStatus()
+  } catch (e) {
+    showToast('error', `❌ Checkout failed: ${e.message}`)
+  }
+}
+
 // ── Push ──────────────────────────────────────────────────────
 function openPushDialog() {
   pushDialog.value = { visible: true }
@@ -269,6 +283,16 @@ async function doPush(mode) {
 function selectCommit(commit) {
   selectedCommitId.value = commit.id
   selectedCommit.value = commit
+}
+
+// ─── Copy hash to clipboard ─────────────────────────────────────────
+function copyHash(commit) {
+  const fullHash = commit.fullHash || commit.id
+  navigator.clipboard.writeText(fullHash).then(() => {
+    showToast('success', '✅ Hash copied to clipboard')
+  }).catch(() => {
+    showToast('error', '❌ Failed to copy hash')
+  })
 }
 
 function selectCommitByHash(hash) {
@@ -675,7 +699,7 @@ function parseRefs(refsStr) {
           :data-commit-id="commit.id"
           :class="{ selected: selectedCommitId === commit.id }"
           @click="selectCommit(commit)"
-          @dblclick="openCheckoutFFDialog(commit)"
+          @dblclick="checkoutCommit(commit)"
           @contextmenu="showContextMenu($event, commit)"
         >
           <!-- Graph Column -->
@@ -723,7 +747,11 @@ function parseRefs(refsStr) {
           </td>
 
           <!-- Hash Column -->
-          <td style="font-family: monospace; font-size: 11px; color: #007acc;">
+          <td
+            style="font-family: monospace; font-size: 11px; color: #007acc; cursor: pointer;"
+            @click.stop="copyHash(commit)"
+            title="Click to copy full hash"
+          >
             {{ commit.hash }}
           </td>
 
