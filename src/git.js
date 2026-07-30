@@ -202,27 +202,66 @@ export function createGitAPI(repoPath) {
       return { success: true, branch: name };
     },
 
-    async getCommitHistory(limit = 50) {
+    async getCommitHistory({ limit = 50, skip = 0, order = 'date', firstParent = false, allBranches = true } = {}) {
       try {
-        // Use raw to get parent hashes (simple-git log doesn't include parents by default)
-        const raw = await git.raw([
-          'log',
-          `--max-count=${limit}`,
-          '--format=%H|%P|%s|%an|%ae|%ai|%D'
-        ]);
+        // Build args: order, scope, first-parent
+        const args = ['log', '--no-show-signature', '--decorate=full'];
+
+        // Order: date-order (default) or topo-order
+        if (order === 'topo') {
+          args.push('--topo-order');
+        } else {
+          args.push('--date-order');
+        }
+
+        // Scope: all branches (including stash) or just HEAD
+        if (allBranches) {
+          args.push('--all');
+          // Exclude origin/HEAD to avoid clutter
+          args.push('--exclude=origin/HEAD');
+        }
+
+        // First-parent mode
+        if (firstParent) {
+          args.push('--first-parent');
+        }
+
+        // Pagination
+        args.push(`--max-count=${limit}`);
+        if (skip > 0) {
+          args.push(`--skip=${skip}`);
+        }
+
+        // Use \0 as delimiter to avoid conflicts with special chars in messages
+        args.push('--format=%H%x00%P%x00%D%x00%aN±%aE%x00%at%x00%s');
+
+        const raw = await git.raw(args);
+
+        if (!raw || !raw.trim()) return [];
 
         return raw.trim().split('\n').filter(Boolean).map(line => {
-          const parts = line.split('|');
-          const hash = parts[0];
+          const parts = line.split('\x00');
+          const hash = parts[0] || '';
           const parentHashes = parts[1] || '';
+          const refs = parts[2] || '';
+          const authorEmail = parts[3] || '?±?';
+          const timestamp = parts[4] || '0';
+          const message = parts[5] || '';
+
+          // Parse author±email
+          const [author, email] = authorEmail.split('±');
+
+          // Format date from unix timestamp
+          const date = timestamp !== '0' ? new Date(parseInt(timestamp) * 1000).toISOString() : '';
+
           return {
             hash,
             shortHash: hash.substring(0, 7),
-            message: parts[2] || '',
-            author: parts[3] || '',
-            email: parts[4] || '',
-            date: parts[5] || '',
-            refs: parts[6] || '',
+            message: message,
+            author: author || '',
+            email: email || '',
+            date,
+            refs,
             parents: parentHashes ? parentHashes.split(' ') : [],
           };
         });

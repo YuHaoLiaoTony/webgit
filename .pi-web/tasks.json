@@ -28,6 +28,20 @@
       "group": "Development",
       "description": "Start the WebGit production server",
       "command": "npm start"
+    },
+    {
+      "id": "kill.port.3000",
+      "title": "Kill Port 3000",
+      "group": "Development",
+      "description": "Find and kill the process listening on port 3000 to free it up",
+      "command": "lsof -ti:3000 | xargs -r kill -9 && echo 'Port 3000 freed' || echo 'Port 3000 was not in use'"
+    },
+    {
+      "id": "restart.dev.server",
+      "title": "Restart Dev Server (kill + start)",
+      "group": "Development",
+      "description": "Kill existing process on port 3000, then start dev server with file watching",
+      "command": "lsof -ti:3000 | xargs -r kill -9 && npm run dev"
     }
   ]
 }

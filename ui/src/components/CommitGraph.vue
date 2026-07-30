@@ -15,9 +15,15 @@ const selectedCommitId = ref(null)
 const selectedCommit = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const loadingMore = ref(false)
+const hasMore = ref(true)
+
+// ─── Filter state ─────────────────────────────────────────────
+const filterOrder = ref('date')    // 'date' or 'topo'
+const filterFirstParent = ref(false)
 
 onMounted(() => {
-  fetchCommits()
+  fetchCommits(true)
   document.addEventListener('click', onDocumentClick)
 })
 
@@ -26,16 +32,28 @@ onUnmounted(() => {
 })
 
 // ─── Fetch real commits from API ───────────────────────────────
-async function fetchCommits() {
-  loading.value = true
+async function fetchCommits(reset = false) {
+  if (reset) {
+    loading.value = true
+    commits.value = []
+    hasMore.value = true
+  } else {
+    loadingMore.value = true
+  }
+
   error.value = null
   selectedCommit.value = null
   selectedCommitId.value = null
 
   try {
     const { get } = useApi()
-    const data = await get('/commits?limit=50')
-    commits.value = data.map(c => ({
+    const skip = reset ? 0 : commits.value.length
+    const limit = 50
+
+    const query = `/commits?limit=${limit}&skip=${skip}&order=${filterOrder.value}&firstParent=${filterFirstParent.value}&allBranches=true`
+    const data = await get(query)
+
+    const mapped = data.map(c => ({
       id: c.hash,
       hash: c.shortHash || c.hash.substring(0, 7),
       fullHash: c.hash,
@@ -50,17 +68,39 @@ async function fetchCommits() {
       _labels: parseRefs(c.refs || ''),
       parents: (c.parents || []).map(p => typeof p === 'string' ? p : p.hash || p),
     }))
+
+    if (reset) {
+      commits.value = mapped
+    } else {
+      commits.value = [...commits.value, ...mapped]
+    }
+
+    // If we got fewer than limit, there are no more commits
+    if (data.length < limit) {
+      hasMore.value = false
+    }
   } catch (e) {
     console.error('Failed to fetch commits:', e)
     error.value = e.message
   } finally {
     loading.value = false
+    loadingMore.value = false
   }
 }
 
-// ─── Watch for branch-switch refresh ───────────────────────────
+function loadMore() {
+  if (!loadingMore.value && hasMore.value) {
+    fetchCommits(false)
+  }
+}
+
+// ─── Watch for branch-switch refresh & filter changes ───────────
 watch(() => uiStore.commitRefreshKey, () => {
-  fetchCommits()
+  fetchCommits(true)
+})
+
+watch([filterOrder, filterFirstParent], () => {
+  fetchCommits(true)
 })
 
 // ─── Context Menu ─────────────────────────────────────────────
@@ -72,16 +112,13 @@ const pushDialog = ref({ visible: false })
 const checkoutFFDialog = ref({ visible: false, localBranch: '', remoteBranch: '' })
 
 function openCheckoutFFDialog(commit) {
-  // Derive local & remote branches from commit refs
   const labels = commit._labels || { local: [], remote: [], tags: [] }
 
   let localBranch = ''
   let remoteBranch = ''
 
-  // Prioritize matching pairs: e.g., 'Tony' ↔ 'origin/Tony'
   if (labels.local.length > 0) {
     localBranch = labels.local[0]
-    // Look for a matching remote branch
     const matchingRemote = labels.remote.find(r => r === `origin/${localBranch}`)
     if (matchingRemote) {
       remoteBranch = matchingRemote
@@ -91,7 +128,6 @@ function openCheckoutFFDialog(commit) {
       remoteBranch = `origin/${localBranch}`
     }
   } else if (labels.remote.length > 0) {
-    // Only remote refs available – strip origin/ for local
     const full = labels.remote[0]
     remoteBranch = full
     if (full.startsWith('origin/')) {
@@ -100,7 +136,6 @@ function openCheckoutFFDialog(commit) {
       localBranch = full
     }
   } else {
-    // Fallback to current branch
     localBranch = statusStore.current || 'main'
     remoteBranch = `origin/${localBranch}`
   }
@@ -137,6 +172,17 @@ function onDocumentClick(e) {
     closeContextMenu()
   }
 }
+
+// ── Commit info helpers for context menu ─────────────────────
+const isCurrentHeadCommit = computed(() => {
+  if (!contextMenu.value.commit || !commits.value.length) return false
+  return contextMenu.value.commit.id === commits.value[0].id
+})
+
+const isRemoteCommit = computed(() => {
+  const labels = contextMenu.value.commit?._labels
+  return labels && labels.remote.length > 0 && labels.local.length === 0
+})
 
 // ── Reset ─────────────────────────────────────────────────────
 function openResetDialog(commit) {
@@ -192,12 +238,6 @@ function closePushDialog() {
   pushDialog.value.visible = false
 }
 
-const pushModes = [
-  { id: 'normal',   label: 'Normal Push',    desc: '推送目前分支到 origin',                     icon: '📤' },
-  { id: 'upstream', label: 'Push & Set Upstream', desc: '推送 + 設定 upstream（新分支第一次用）', icon: '🔗' },
-  { id: 'force',    label: 'Force Push',     desc: '⚠ 強制推送，覆蓋遠端歷史',                  icon: '⚠️' },
-]
-
 async function doPush(mode) {
   if (mode === 'force') {
     const confirmed = confirm(
@@ -241,115 +281,163 @@ function selectCommitByHash(hash) {
 defineExpose({ selectedCommit, selectCommitByHash })
 
 // ═══════════════════════════════════════════════════════════════
-//  LANE ROUTING (Track Allocation) — parent-hash based
+//  LANE ROUTING — DAG-based algorithm (inspired by SourceGit)
 // ═══════════════════════════════════════════════════════════════
 //
 //  Algorithm:
-//    1. HEAD (data[0]) → lane 0 (trunk)
-//    2. Walk forward: if commit[i] is the parent of commit[i-1] (i.e., linear),
-//       it inherits the same lane.
-//    3. Else: commit[i-1]'s parent is NOT commit[i] → this means
-//       commit[i-1] is a merge or the first commit of a branch.
-//       -> commit[i] gets a new lane OR reuses an already-assigned lane.
+//    Maintain a list of active "paths". Each path represents a
+//    branch line that needs to connect to a parent commit.
 //
-//  Active lanes per row: determined by each lane's first→last row span.
-//  Branch/merge events: detected when lane appears/disappears.
+//    For each commit (row), top-to-bottom:
+//      1. Find the "major" path — one whose `next` matches this commit.
+//         -> It continues through this commit, updating `next` to first parent.
+//      2. If no major path found → new branch, push a lane to the right.
+//      3. Other paths matching this commit are "ending" → they merge here.
+//      4. Merge commits: additional parents create new paths or get linked.
 // ═══════════════════════════════════════════════════════════════
 
-const LANE_COLORS = ['#f5a623', '#4a90e2', '#e056fd', '#28a745', '#cb2431']
-const LANE_X_BASE = 25
-const LANE_X_STEP = 30
+const LANE_COLORS = ['#f5a623', '#4a90e2', '#e056fd', '#28a745', '#cb2431', '#00bcd4', '#ff5722', '#9c27b0', '#8bc34a', '#ff9800']
+const LANE_X_BASE = 6
+const LANE_X_STEP = 7
+const ROW_H = 28
+const DOT_Y = 14
+
+class PathHelper {
+  constructor(next, lane) {
+    this.next = next        // parent SHA this path is following
+    this.lane = lane        // stable lane index (0 = trunk)
+    this.color = LANE_COLORS[lane % LANE_COLORS.length]
+    this.firstRow = -1      // row index where this path started
+    this.lastRow = -1       // row index where this path ended
+  }
+}
 
 function routeLanes(data) {
   if (!data || !data.length) return []
 
-  // hash → lane index
-  const hashToLane = new Map()
-  let nextLane = 1
+  // Build hash → row index lookup
+  const hashToRow = new Map()
+  data.forEach((c, i) => {
+    if (c.fullHash) hashToRow.set(c.fullHash, i)
+  })
 
-  // ── Pass 1: assign lanes by following parent chain ──
-  const commitLanes = data.map((c, idx) => {
-    let lane
+  // Active paths
+  const paths = []
+  let nextLane = 1 // lane 0 is the trunk
 
-    if (idx === 0) {
-      // HEAD → lane 0 (trunk)
-      lane = 0
+  // Per-row results
+  const result = []
+
+  for (let i = 0; i < data.length; i++) {
+    const commit = data[i]
+
+    // ── 1. Find the "major" path (the one that continues through this commit) ──
+    let majorPath = null
+    let majorIdx = -1
+    const endingPaths = []
+
+    for (let p = 0; p < paths.length; p++) {
+      if (paths[p].next === commit.fullHash) {
+        if (majorPath === null) {
+          majorPath = paths[p]
+          majorIdx = p
+        } else {
+          endingPaths.push(paths[p])
+        }
+      }
+    }
+
+    if (majorPath) {
+      // Update major path to follow first parent
+      majorPath.next = commit.parents[0] || null
+      if (majorPath.firstRow < 0) majorPath.firstRow = i
+      majorPath.lastRow = i
     } else {
-      const prev = data[idx - 1]
-      // Does this commit connect linearly to the previous one?
-      // Compare using full hash (parents from API are full 40-char hashes)
-      const isParentOfPrev = prev.parents && prev.parents.some(ph => ph === c.fullHash)
+      // ── 2. New branch — reuse freed lane if available ──
+      const usedLanes = new Set(paths.map(p => p.lane))
+      let lane = 1
+      while (usedLanes.has(lane)) lane++
+      if (lane >= nextLane) nextLane = lane + 1
+      majorPath = new PathHelper(commit.parents[0] || null, lane)
+      majorPath.firstRow = i
+      majorPath.lastRow = i
+      paths.push(majorPath)
+    }
 
-      if (isParentOfPrev) {
-        // Linear: this is the parent of the previous commit → same lane
-        lane = hashToLane.get(prev.hash)
-      } else if (hashToLane.has(c.hash)) {
-        // Already assigned (was a parent of an earlier commit from another branch)
-        lane = hashToLane.get(c.hash)
+    // ── 3. Handle merge parents (parents[1..n]) ──
+    const mergeParents = commit.parents.slice(1).filter(ph => ph)
+    const mergeLinks = []
+
+    for (const parentHash of mergeParents) {
+      // Check if this parent is already followed by an active path
+      let existingPath = paths.find(p => p.next === parentHash)
+
+      if (existingPath) {
+        // Already tracked — just mark as a merge link
+        mergeLinks.push({ fromLane: existingPath.lane, parentHash })
       } else {
-        // New branch: this commit is NOT the parent of the previous one
-        lane = nextLane++
+        // New path for this merge parent — reuse freed lane if available
+        const usedLanes = new Set(paths.map(p => p.lane))
+        let lane = 1
+        while (usedLanes.has(lane)) lane++
+        if (lane >= nextLane) nextLane = lane + 1
+        const newPath = new PathHelper(parentHash, lane)
+        newPath.firstRow = i
+        newPath.lastRow = i
+        paths.push(newPath)
+        mergeLinks.push({ fromLane: lane, parentHash })
       }
     }
 
-    hashToLane.set(c.hash, lane)
-    return lane
-  })
+    // ── 4. Before removing ending paths, record which lanes are active
+    //     (including lanes that will end at this row — they still connect to the row above)
+    const preMergeLanes = [...new Set(paths.map(p => p.lane))]
+    if (!preMergeLanes.includes(majorPath.lane)) preMergeLanes.push(majorPath.lane)
+    preMergeLanes.sort((a, b) => a - b)
 
-  // ── Pass 2: determine active range for each lane ──
-  const laneFirst = new Map()
-  const laneLast = new Map()
-  commitLanes.forEach((lane, idx) => {
-    if (!laneFirst.has(lane) || idx < laneFirst.get(lane)) laneFirst.set(lane, idx)
-    if (!laneLast.has(lane) || idx > laneLast.get(lane)) laneLast.set(lane, idx)
-  })
-  laneFirst.set(0, 0)
-  laneLast.set(0, data.length - 1)
-
-  const maxLane = Math.max(...Array.from(laneFirst.keys()))
-
-  // ── Pass 3: build per-row info ──
-  return data.map((c, idx) => {
-    const myLane = commitLanes[idx]
-    const prevLane = idx > 0 ? commitLanes[idx - 1] : myLane
-    const nextLane = idx < data.length - 1 ? commitLanes[idx + 1] : myLane
-
-    // Active lanes at this row
-    const activeLanes = []
-    for (let l = 0; l <= maxLane; l++) {
-      const first = laneFirst.get(l)
-      const last = laneLast.get(l)
-      if (first !== undefined && last !== undefined && idx >= first && idx <= last) {
-        activeLanes.push(l)
-      }
+    // Remove ending paths from active paths
+    for (const ep of endingPaths) {
+      ep.lastRow = i
+      const idx = paths.indexOf(ep)
+      if (idx >= 0) paths.splice(idx, 1)
     }
 
-    // Branch point: first occurrence of a non-trunk lane
-    const isBranchPoint = myLane !== 0 && idx === laneFirst.get(myLane)
-    // Merge point: last occurrence of a non-trunk lane
-    const isMergePoint = myLane !== 0 && idx === laneLast.get(myLane)
-    // Trunk spawns a branch: trunk row just before a new non-trunk lane starts
-    const isTrunkBranchOut = myLane === 0 && nextLane !== 0 && nextLane !== myLane && idx + 1 === laneFirst.get(nextLane)
-    // Trunk absorbs a merge: trunk row just after a non-trunk lane ends
-    const isTrunkMergeIn = myLane === 0 && prevLane !== 0 && prevLane !== myLane && idx - 1 === laneLast.get(prevLane)
+    // ── 5. Build continuing lanes (paths that survive beyond this row) ──
+    const continuingLanes = [...new Set(paths.map(p => p.lane))]
+    if (!continuingLanes.includes(majorPath.lane)) continuingLanes.push(majorPath.lane)
+    continuingLanes.sort((a, b) => a - b)
 
-    return {
-      id: c.id,
-      lane: myLane,
-      activeLanes,
-      prevLane,
-      nextLane,
-      isBranchPoint,
-      isMergePoint,
-      isTrunkBranchOut,
-      isTrunkMergeIn,
-    }
-  })
+    // ── 6. Determine branch/merge events for the main path ──
+    const isBranch = majorPath.firstRow === i && i > 0
+    const isMerge = endingPaths.length > 0
+
+    result.push({
+      id: commit.id,
+      lane: majorPath.lane,
+      // preMergeLanes: lanes active before ending paths removed (used for willBeActive)
+      preMergeLanes,
+      // continuingLanes: lanes that remain active after this row
+      continuingLanes,
+      isBranch,
+      isMerge,
+      mergeLinks,
+    })
+  }
+
+  return result
 }
 
 // ─── Computed lane routing ─────────────────────────────────────
 const laneRouting = computed(() => {
   return routeLanes(commits.value)
+})
+
+// ─── Dynamic graph column width ────────────────────────────────
+const graphColWidth = computed(() => {
+  const routes = laneRouting.value
+  if (!routes || routes.length === 0) return 80
+  const maxLane = Math.max(...routes.flatMap(r => r.preMergeLanes), 0)
+  return Math.max(80, getLaneX(maxLane) + 20)
 })
 
 // ─── Convenience: laneInfo lookup ──────────────────────────────
@@ -366,9 +454,10 @@ function getLaneColor(lane) {
 // ═══════════════════════════════════════════════════════════════
 //
 //  Each row draws:
-//  1. Vertical through-lines for EVERY active lane
-//  2. Branch curves when lanes appear/disappear
-//  3. The commit dot on its own lane (with optional ring)
+//    1. Vertical through-lines for every active lane
+//    2. Branch curves when a new lane appears
+//    3. Merge curves when a lane ends
+//    4. The commit dot on its own lane
 // ═══════════════════════════════════════════════════════════════
 
 function getRowGraph(commit, index) {
@@ -380,69 +469,94 @@ function getRowGraph(commit, index) {
 
   const r = routes[index]
   const isFirst = index === 0
-  const isLast = index === data.length - 1
-  const nodeY = 14
-  const topY = 0
-  const botY = 28
-  const viewW = 80
+  const rowTop = 0
+  const rowBot = ROW_H
+  const nodeY = DOT_Y
 
-  let svg = `<svg class="graph-svg" viewBox="0 0 ${viewW} 28" xmlns="http://www.w3.org/2000/svg">`
+  // Dynamic viewBox width based on maximum lane across all rows
+  const maxLane = Math.max(...routes.flatMap(rr => rr.preMergeLanes), r.lane)
+  const viewW = Math.max(80, getLaneX(maxLane) + 15)
 
-  // ── 1. Draw vertical through-lines for each active lane ──
-  for (const lane of r.activeLanes) {
+  let svg = `<svg class="graph-svg" viewBox="0 0 ${viewW} ${ROW_H}" xmlns="http://www.w3.org/2000/svg">`
+
+  const myCx = getLaneX(r.lane)
+
+  // ── Identify lanes that should skip vertical segments (curves replace them) ──
+  // Merging lanes: lanes that end at this row — curve replaces top-half vertical
+  const mergingLanes = index > 0
+    ? routes[index - 1].continuingLanes.filter(l =>
+        r.preMergeLanes.includes(l) && !r.continuingLanes.includes(l) && l !== r.lane
+      )
+    : []
+
+  // ── 1. Draw vertical through-lines for every lane ──
+  //   - Merge rows: merging lane has NO top-half (curve handles the connection)
+  //   - Normal rows: full vertical line
+  for (const lane of r.preMergeLanes) {
     const cx = getLaneX(lane)
     const color = getLaneColor(lane)
-    const isMyLane = lane === r.lane
 
-    // Determine lane-specific events
-    const laneWasActivePrev = index > 0 && routes[index - 1].activeLanes.includes(lane)
-    const laneIsActiveNext = index < data.length - 1 && routes[index + 1].activeLanes.includes(lane)
+    const wasActive = index > 0 && routes[index - 1].preMergeLanes.includes(lane)
+    const willBeActive = index < data.length - 1 && routes[index + 1].preMergeLanes.includes(lane)
+    const isMerging = mergingLanes.includes(lane)
 
-    // Does this lane have a branch event at this row?
-    // A lane "branches in" if it's new at this row (wasn't active before)
-    const laneBranchesIn = !laneWasActivePrev && laneIsActiveNext
-    // A lane "merges out" if it ends at this row (won't be active next)
-    const laneMergesOut = laneWasActivePrev && !laneIsActiveNext
-
-    // ── Vertical line (top half) ──
-    if (laneWasActivePrev && !laneBranchesIn) {
-      // Simple vertical continuation from above
-      svg += `<line x1="${cx}" y1="${topY}" x2="${cx}" y2="${nodeY}" stroke="${color}" stroke-width="2.5" />`
-    } else if (laneBranchesIn && lane !== r.lane) {
-      // This lane branches IN from below (curve from my lane to this lane)
-      const myCx = getLaneX(r.lane)
-      svg += `<path d="M ${myCx} ${topY} Q ${(myCx + cx) / 2} ${topY} ${cx} ${nodeY}" fill="none" stroke="${color}" stroke-width="2.5" />`
+    // Top half: skip if this lane is merging here (curve replaces it)
+    if (wasActive && !isMerging) {
+      svg += `<line x1="${cx}" y1="${rowTop}" x2="${cx}" y2="${nodeY}" stroke="${color}" stroke-width="2.5" />`
     }
 
-    // ── Vertical line (bottom half) ──
-    if (laneIsActiveNext && !laneMergesOut) {
-      // Simple vertical continuation downward
-      svg += `<line x1="${cx}" y1="${nodeY}" x2="${cx}" y2="${botY}" stroke="${color}" stroke-width="2.5" />`
-    } else if (laneMergesOut && lane !== r.lane) {
-      // This lane merges OUT (curve from this lane to my lane)
-      const myCx = getLaneX(r.lane)
-      svg += `<path d="M ${cx} ${nodeY} Q ${(myCx + cx) / 2} ${botY} ${myCx} ${botY}" fill="none" stroke="${color}" stroke-width="2.5" />`
+    // Bottom half: always draw — no branch curves
+    if (willBeActive) {
+      svg += `<line x1="${cx}" y1="${nodeY}" x2="${cx}" y2="${rowBot}" stroke="${color}" stroke-width="2.5" />`
     }
   }
 
-  // ── 2. Draw commit dot on every row ──
-  //  Branch/merge points get toggle ring (+ chevron) instead of a plain dot
-  //  First commit (HEAD) gets a larger dot with white border
+  // ── 3. Merge curves: draw from branch TOP (y=0) → commit DOT (y=14) ──
+  // Rightward → right-angle quadratic (SourceGit style)
+  // Leftward  → S-curve cubic with midY±4 (SourceGit style)
+  for (const mLane of mergingLanes) {
+    const mCx = getLaneX(mLane)
+    if (mCx < myCx) {
+      // Rightward curve — right-angle quadratic: control at (curX, lastY)
+      svg += `<path d="M ${mCx} ${rowTop} Q ${myCx} ${rowTop} ${myCx} ${nodeY}" fill="none" stroke="${getLaneColor(mLane)}" stroke-width="2.5" stroke-linecap="round" />`
+    } else {
+      // Leftward curve — cubic bezier S-curve with midY±4
+      const midY = (rowTop + nodeY) / 2
+      svg += `<path d="M ${mCx} ${rowTop} C ${mCx} ${midY + 4} ${myCx} ${midY - 4} ${myCx} ${nodeY}" fill="none" stroke="${getLaneColor(mLane)}" stroke-width="2.5" stroke-linecap="round" />`
+    }
+  }
+
+  // ── 4. Merge parent links (for merge commit's additional parents) ──
+  // All at dot height (nodeY). The new parent path continues downward from nodeY.
+  for (const link of (r.mergeLinks || [])) {
+    const linkCx = getLaneX(link.fromLane)
+    if (linkCx !== myCx) {
+      if (linkCx > myCx) {
+        // Rightward — right-angle quadratic: control at (linkCx, nodeY)
+        svg += `<path d="M ${myCx} ${nodeY} Q ${linkCx} ${nodeY} ${linkCx} ${nodeY}" fill="none" stroke="${getLaneColor(link.fromLane)}" stroke-width="2.5" stroke-dasharray="4,3" />`
+      } else {
+        // Leftward — S-curve cubic with midY±4
+        svg += `<path d="M ${myCx} ${nodeY} C ${myCx} ${nodeY - 4} ${linkCx} ${nodeY + 4} ${linkCx} ${nodeY}" fill="none" stroke="${getLaneColor(link.fromLane)}" stroke-width="2.5" stroke-dasharray="4,3" />`
+      }
+    }
+  }
+
+  // ── 5. Draw commit dot ──
   const dotCx = getLaneX(r.lane)
   const dotColor = getLaneColor(r.lane)
+  const isHead = isFirst
+  // Only use actual commit parent data to determine merge — not lane-routing heuristics
+  const isMerge = commit.parents && commit.parents.length > 1
 
-  // Ring + chevron only on trunk commits that spawn a branch (divergence point)
-  const isBranchRow = r.isTrunkBranchOut
-
-  if (isBranchRow) {
-    // Toggle ring: white inner + colored stroke
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="8" fill="#fff" />`
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="7" fill="none" stroke="${dotColor}" stroke-width="2.5" />`
-    // Chevron pointing down
-    svg += `<path d="M ${dotCx - 3} ${nodeY - 4} L ${dotCx} ${nodeY} L ${dotCx + 3} ${nodeY - 4}" fill="none" stroke="${dotColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />`
-  } else if (isFirst) {
-    // HEAD commit: larger dot with white border
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="5" fill="${dotColor}" stroke="#fff" stroke-width="1.5" />`
+  if (isHead) {
+    // HEAD commit: large hollow ring + small solid center
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="6" fill="none" stroke="${dotColor}" stroke-width="2.5" />`
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="3" fill="${dotColor}" />`
+  } else if (isMerge) {
+    // Merge commit: large solid dot with cross
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="5" fill="${dotColor}" />`
+    svg += `<line x1="${dotCx - 4}" y1="${nodeY}" x2="${dotCx + 4}" y2="${nodeY}" stroke="white" stroke-width="1.5" />`
+    svg += `<line x1="${dotCx}" y1="${nodeY - 4}" x2="${dotCx}" y2="${nodeY + 4}" stroke="white" stroke-width="1.5" />`
   } else {
     // Normal commit: solid filled circle
     svg += `<circle cx="${dotCx}" cy="${nodeY}" r="4" fill="${dotColor}" />`
@@ -454,24 +568,38 @@ function getRowGraph(commit, index) {
 
 // ─── Parse refs string into structured labels ───────────────
 //  'HEAD -> Tony, origin/Tony' → { local: ['Tony'], remote: ['origin/Tony'] }
-//  'origin/main, 測試, main'   → { local: ['測試', 'main'], remote: ['origin/main'] }
 function parseRefs(refsStr) {
   const labels = { local: [], remote: [], tags: [] }
   if (!refsStr) return labels
 
+  // Parse --decorate=full format:
+  // "HEAD -> refs/heads/main, refs/remotes/origin/main, refs/tags/v1.0"
   refsStr.split(',').forEach(part => {
     const name = part.trim()
-    if (!name || name === 'HEAD') return
-    // Strip 'HEAD -> ' prefix (e.g., 'HEAD -> Tony' → 'Tony')
+    if (!name) return
+
+    // Strip 'HEAD -> ' prefix
     const clean = name.replace(/^HEAD -> /, '').trim()
     if (!clean) return
 
-    if (clean.startsWith('origin/') || clean.startsWith('refs/remotes/')) {
+    if (clean.startsWith('refs/remotes/')) {
+      labels.remote.push(clean.replace('refs/remotes/', ''))
+    } else if (clean.startsWith('refs/heads/')) {
+      labels.local.push(clean.replace('refs/heads/', ''))
+    } else if (clean.startsWith('refs/tags/')) {
+      labels.tags.push(clean.replace('refs/tags/', ''))
+    } else if (clean.startsWith('origin/')) {
       labels.remote.push(clean)
-    } else if (clean.startsWith('refs/tags/') || /^v?\d+\./.test(clean)) {
+    } else if (/^v?\d+\./.test(clean)) {
       labels.tags.push(clean)
-    } else {
-      labels.local.push(clean)
+    } else if (clean !== 'HEAD') {
+      // Plain branch name (no refs/ prefix)
+      // Could be local or remote
+      if (clean.includes('/')) {
+        labels.remote.push(clean)
+      } else {
+        labels.local.push(clean)
+      }
     }
   })
   return labels
@@ -479,6 +607,31 @@ function parseRefs(refsStr) {
 </script>
 
 <template>
+  <!-- ─── Filter toolbar ─── -->
+  <div class="filter-toolbar" v-if="!loading">
+    <div class="filter-group">
+      <span class="filter-label">Order:</span>
+      <button
+        class="filter-btn"
+        :class="{ active: filterOrder === 'date' }"
+        @click="filterOrder = 'date'"
+      >
+        Date
+      </button>
+      <button
+        class="filter-btn"
+        :class="{ active: filterOrder === 'topo' }"
+        @click="filterOrder = 'topo'"
+      >
+        Topo
+      </button>
+    </div>
+    <label class="filter-checkbox">
+      <input type="checkbox" v-model="filterFirstParent" />
+      <span>First Parent</span>
+    </label>
+  </div>
+
   <!-- Loading State -->
   <div v-if="loading" class="commit-list-loading">
     <div class="loading">
@@ -508,7 +661,7 @@ function parseRefs(refsStr) {
     <table class="commit-table">
       <thead>
         <tr>
-          <th style="width: 80px;">Graph</th>
+          <th :style="{ width: graphColWidth + 'px' }">Graph</th>
           <th>Subject</th>
           <th style="width: 160px;">Author</th>
           <th style="width: 80px;">Hash</th>
@@ -529,10 +682,36 @@ function parseRefs(refsStr) {
           <td class="graph-col" v-html="getRowGraph(commit, idx)"></td>
 
           <!-- Subject Column -->
-          <td>
-            <span v-for="lb in commit._labels.local" :key="'l-' + lb" class="badge-branch">✓ {{ lb }}</span>
-            <span v-for="lb in commit._labels.remote" :key="'r-' + lb" class="badge-tag">{{ lb.replace('origin/', '') }}</span>
-            <span>{{ commit.subject }}</span>
+          <td class="subject-col">
+            <!-- Local branch badges -->
+            <span v-for="lb in commit._labels.local" :key="'l-' + lb" class="badge badge-branch">
+              <svg class="badge-icon" viewBox="0 0 16 16" width="10" height="10">
+                <path d="M5.5 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="currentColor"/>
+                <path d="M4 7.5V12h1.5v-4.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                <path d="M11 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="currentColor"/>
+                <path d="M12.5 9H7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+              {{ lb }}
+            </span>
+            <!-- Remote branch badges (italic + bold) -->
+            <span v-for="rb in commit._labels.remote" :key="'r-' + rb" class="badge badge-remote">
+              <svg class="badge-icon" viewBox="0 0 16 16" width="10" height="10">
+                <circle cx="8" cy="3" r="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                <circle cx="4" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                <circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                <line x1="8" y1="5.5" x2="4" y2="9.5" stroke="currentColor" stroke-width="1"/>
+                <line x1="8" y1="5.5" x2="12" y2="9.5" stroke="currentColor" stroke-width="1"/>
+              </svg>
+              {{ rb.replace('origin/', '') }}
+            </span>
+            <!-- Tags -->
+            <span v-for="t in commit._labels.tags" :key="'t-' + t" class="badge badge-tag">
+              <svg class="badge-icon" viewBox="0 0 16 16" width="10" height="10">
+                <path d="M2 2h5l7 7-5 5-7-7V2z" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+              {{ t }}
+            </span>
+            <span class="commit-subject">{{ commit.subject }}</span>
           </td>
 
           <!-- Author Column -->
@@ -554,6 +733,18 @@ function parseRefs(refsStr) {
       </tbody>
     </table>
 
+    <!-- Load More Button -->
+    <div v-if="hasMore" class="load-more-row">
+      <button
+        class="load-more-btn"
+        :disabled="loadingMore"
+        @click="loadMore"
+      >
+        <span v-if="loadingMore" class="spinner-small"></span>
+        {{ loadingMore ? 'Loading...' : 'Load more commits' }}
+      </button>
+    </div>
+
     <!-- Context Menu -->
     <teleport to="body">
       <div
@@ -565,7 +756,22 @@ function parseRefs(refsStr) {
           {{ statusStore.current }}
         </div>
         <div class="context-menu-separator"></div>
+
+        <!-- Checkout (for non-HEAD commits) -->
         <div
+          v-if="!isCurrentHeadCommit"
+          class="context-menu-item"
+          @click="openCheckoutFFDialog(contextMenu.commit)"
+        >
+          <span class="context-menu-icon">🔀</span>
+          <span class="context-menu-title">
+            Checkout <strong>{{ contextMenu.commit?.hash }}</strong>
+          </span>
+        </div>
+
+        <!-- Reset (not allowed on current HEAD) -->
+        <div
+          v-if="!isCurrentHeadCommit"
           class="context-menu-item"
           @click="openResetDialog(contextMenu.commit)"
         >
@@ -614,12 +820,70 @@ function parseRefs(refsStr) {
       :local-branch="checkoutFFDialog.localBranch"
       :remote-branch="checkoutFFDialog.remoteBranch"
       @close="closeCheckoutFFDialog"
-      @done="fetchCommits"
+      @done="fetchCommits(true)"
     />
   </div>
 </template>
 
 <style scoped>
+/* ─── Filter Toolbar ──────────────────────────────────────────── */
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  background: #f6f8fa;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-label {
+  font-size: 11px;
+  color: #888;
+  margin-right: 2px;
+}
+
+.filter-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  border: 1px solid #d0d0d0;
+  background: #fff;
+  color: #555;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-btn:hover {
+  background: #f0f0f0;
+}
+
+.filter-btn.active {
+  background: #4a90e2;
+  color: #fff;
+  border-color: #4a90e2;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+}
+
+.filter-checkbox input {
+  margin: 0;
+}
+
+/* ─── Load / Error / Empty ───────────────────────────────────── */
 .commit-list-loading,
 .commit-list-error,
 .commit-list-empty {
@@ -644,31 +908,52 @@ function parseRefs(refsStr) {
   height: 100%;
 }
 
-/* ─── Subject column badges (docs/uiux style) ─── */
-.badge-branch {
+/* ─── Badges ─── */
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.badge-icon {
+  flex-shrink: 0;
+}
+
+.badge-branch {
   background-color: #fff;
   border: 1px solid #4a90e2;
   color: #333;
-  padding: 0 5px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: bold;
-  margin-right: 4px;
+}
+
+.badge-remote {
+  background-color: #f0f6ff;
+  border: 1px solid #7a9ec7;
+  color: #4a6a8a;
+  font-style: italic;
+  font-weight: 700;
 }
 
 .badge-tag {
-  display: inline-flex;
-  align-items: center;
   background-color: #fff2cc;
   border: 1px solid #d6b656;
   color: #333;
-  padding: 0 5px;
-  border-radius: 3px;
-  font-size: 10px;
-  margin-right: 4px;
+}
+
+.commit-subject {
+  color: #333;
+}
+
+/* ─── Subject column ─── */
+.subject-col {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Commit Table Styles ────────────────────────────────────── */
@@ -711,19 +996,24 @@ function parseRefs(refsStr) {
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
-  border-bottom: 1px solid #f0f0f0;
 }
 
 .commit-table .graph-col {
   padding: 0 !important;
   text-align: center;
-  width: 80px;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+.commit-table .subject-col {
+  padding-left: 8px;
 }
 
 .commit-table :deep(.graph-svg) {
   width: 100%;
   height: 28px;
   display: block;
+  vertical-align: top;
 }
 
 .author-tag {
@@ -734,6 +1024,46 @@ function parseRefs(refsStr) {
   color: #fff;
   font-weight: bold;
   margin-right: 4px;
+}
+
+/* ─── Load More ───────────────────────────────────────────────── */
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.load-more-btn {
+  padding: 6px 20px;
+  font-size: 12px;
+  color: #4a90e2;
+  background: #fff;
+  border: 1px solid #4a90e2;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.load-more-btn:hover:not(:disabled) {
+  background: #f0f6ff;
+}
+
+.load-more-btn:disabled {
+  color: #aaa;
+  border-color: #ccc;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #4a90e2;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 /* ─── Context Menu ─────────────────────────────────────────────── */

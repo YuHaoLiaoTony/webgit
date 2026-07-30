@@ -193,7 +193,11 @@ export async function startServer(options = {}) {
     try {
       const gitAPI = getGitAPI(req);
       const limit = parseInt(req.query.limit) || 50;
-      const commits = await gitAPI.getCommitHistory(limit);
+      const skip = parseInt(req.query.skip) || 0;
+      const order = req.query.order || 'date';
+      const firstParent = req.query.firstParent === 'true';
+      const allBranches = req.query.allBranches !== 'false';
+      const commits = await gitAPI.getCommitHistory({ limit, skip, order, firstParent, allBranches });
       res.json(commits);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });

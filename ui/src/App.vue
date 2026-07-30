@@ -240,8 +240,8 @@ onUnmounted(() => {
     </div>
     <div class="toolbar-divider"></div>
     <div style="flex: 1; text-align: center;">
-      <div style="font-weight: bold; font-size: 13px;">TypeScript*</div>
-      <div style="font-size: 10px; color: #666;">🌿 master</div>
+      <div style="font-weight: bold; font-size: 13px;">{{ reposStore.activeRepo?.name || '' }}</div>
+      <div style="font-size: 10px; color: #666;">🌿 {{ statusStore.current || '' }}</div>
     </div>
     <div class="toolbar-divider"></div>
     <div class="toolbar-btn">
