@@ -8,13 +8,7 @@
       "description": "Build Vue UI with Vite and deploy to public/",
       "command": "bash scripts/deploy.sh"
     },
-    {
-      "id": "deploy.ui.skip-build",
-      "title": "Deploy UI (skip build)",
-      "group": "Build & Deploy",
-      "description": "Deploy existing dist/ to public/ without rebuilding",
-      "command": "bash scripts/deploy.sh --skip-build"
-    },
+
     {
       "id": "dev.server",
       "title": "Start Dev Server",
@@ -22,26 +16,28 @@
       "description": "Start the WebGit development server with file watching",
       "command": "npm run dev"
     },
-    {
-      "id": "start.server",
-      "title": "Start Server",
-      "group": "Development",
-      "description": "Start the WebGit production server",
-      "command": "npm start"
-    },
-    {
-      "id": "kill.port.3000",
-      "title": "Kill Port 3000",
-      "group": "Development",
-      "description": "Find and kill the process listening on port 3000 to free it up",
-      "command": "lsof -ti:3000 | xargs -r kill -9 && echo 'Port 3000 freed' || echo 'Port 3000 was not in use'"
-    },
+
+
     {
       "id": "restart.dev.server",
       "title": "Restart Dev Server (kill + start)",
       "group": "Development",
       "description": "Kill existing process on port 3000, then start dev server with file watching",
       "command": "lsof -ti:3000 | xargs -r kill -9 && npm run dev"
+    },
+    {
+      "id": "test.graph",
+      "title": "Test Graph Algorithm",
+      "group": "Testing",
+      "description": "Run graph algorithm unit tests (routeLanes) and generate visual demo HTML. Re-runs both when core algorithm changes.",
+      "command": "bash scripts/test-graph.sh"
+    },
+    {
+      "id": "test.graph.watch",
+      "title": "Test Graph Algorithm (watch)",
+      "group": "Testing",
+      "description": "Run graph tests and regenerate demo HTML, then watch for file changes and re-run automatically.",
+      "command": "bash scripts/test-graph.sh --watch"
     }
   ]
 }

@@ -5,6 +5,7 @@ import { useUiStore } from '../stores/ui.js'
 import { useStatusStore } from '../stores/status.js'
 import { showToast } from '../composables/useToast.js'
 import CheckoutFastForwardDialog from './CheckoutFastForwardDialog.vue'
+import { routeLanes, getLaneX, getLaneColor, getRowGraph as renderRowGraph, LANE_COLORS, ROW_H, DOT_Y } from '../lib/graph-core.js'
 
 const uiStore = useUiStore()
 const statusStore = useStatusStore()
@@ -304,153 +305,6 @@ function selectCommitByHash(hash) {
 
 defineExpose({ selectedCommit, selectCommitByHash })
 
-// ═══════════════════════════════════════════════════════════════
-//  LANE ROUTING — DAG-based algorithm (inspired by SourceGit)
-// ═══════════════════════════════════════════════════════════════
-//
-//  Algorithm:
-//    Maintain a list of active "paths". Each path represents a
-//    branch line that needs to connect to a parent commit.
-//
-//    For each commit (row), top-to-bottom:
-//      1. Find the "major" path — one whose `next` matches this commit.
-//         -> It continues through this commit, updating `next` to first parent.
-//      2. If no major path found → new branch, push a lane to the right.
-//      3. Other paths matching this commit are "ending" → they merge here.
-//      4. Merge commits: additional parents create new paths or get linked.
-// ═══════════════════════════════════════════════════════════════
-
-const LANE_COLORS = ['#f5a623', '#4a90e2', '#e056fd', '#28a745', '#cb2431', '#00bcd4', '#ff5722', '#9c27b0', '#8bc34a', '#ff9800']
-const LANE_X_BASE = 6
-const LANE_X_STEP = 7
-const ROW_H = 28
-const DOT_Y = 14
-
-class PathHelper {
-  constructor(next, lane) {
-    this.next = next        // parent SHA this path is following
-    this.lane = lane        // stable lane index (0 = trunk)
-    this.color = LANE_COLORS[lane % LANE_COLORS.length]
-    this.firstRow = -1      // row index where this path started
-    this.lastRow = -1       // row index where this path ended
-  }
-}
-
-function routeLanes(data) {
-  if (!data || !data.length) return []
-
-  // Build hash → row index lookup
-  const hashToRow = new Map()
-  data.forEach((c, i) => {
-    if (c.fullHash) hashToRow.set(c.fullHash, i)
-  })
-
-  // Active paths
-  const paths = []
-  let nextLane = 1 // lane 0 is the trunk
-
-  // Per-row results
-  const result = []
-
-  for (let i = 0; i < data.length; i++) {
-    const commit = data[i]
-
-    // ── 1. Find the "major" path (the one that continues through this commit) ──
-    let majorPath = null
-    let majorIdx = -1
-    const endingPaths = []
-
-    for (let p = 0; p < paths.length; p++) {
-      if (paths[p].next === commit.fullHash) {
-        if (majorPath === null) {
-          majorPath = paths[p]
-          majorIdx = p
-        } else {
-          endingPaths.push(paths[p])
-        }
-      }
-    }
-
-    if (majorPath) {
-      // Update major path to follow first parent
-      majorPath.next = commit.parents[0] || null
-      if (majorPath.firstRow < 0) majorPath.firstRow = i
-      majorPath.lastRow = i
-    } else {
-      // ── 2. New branch — reuse freed lane if available ──
-      const usedLanes = new Set(paths.map(p => p.lane))
-      let lane = 1
-      while (usedLanes.has(lane)) lane++
-      if (lane >= nextLane) nextLane = lane + 1
-      majorPath = new PathHelper(commit.parents[0] || null, lane)
-      majorPath.firstRow = i
-      majorPath.lastRow = i
-      paths.push(majorPath)
-    }
-
-    // ── 3. Handle merge parents (parents[1..n]) ──
-    const mergeParents = commit.parents.slice(1).filter(ph => ph)
-    const mergeLinks = []
-
-    for (const parentHash of mergeParents) {
-      // Check if this parent is already followed by an active path
-      let existingPath = paths.find(p => p.next === parentHash)
-
-      if (existingPath) {
-        // Already tracked — just mark as a merge link
-        mergeLinks.push({ fromLane: existingPath.lane, parentHash })
-      } else {
-        // New path for this merge parent — reuse freed lane if available
-        const usedLanes = new Set(paths.map(p => p.lane))
-        let lane = 1
-        while (usedLanes.has(lane)) lane++
-        if (lane >= nextLane) nextLane = lane + 1
-        const newPath = new PathHelper(parentHash, lane)
-        newPath.firstRow = i
-        newPath.lastRow = i
-        paths.push(newPath)
-        mergeLinks.push({ fromLane: lane, parentHash })
-      }
-    }
-
-    // ── 4. Before removing ending paths, record which lanes are active
-    //     (including lanes that will end at this row — they still connect to the row above)
-    const preMergeLanes = [...new Set(paths.map(p => p.lane))]
-    if (!preMergeLanes.includes(majorPath.lane)) preMergeLanes.push(majorPath.lane)
-    preMergeLanes.sort((a, b) => a - b)
-
-    // Remove ending paths from active paths
-    for (const ep of endingPaths) {
-      ep.lastRow = i
-      const idx = paths.indexOf(ep)
-      if (idx >= 0) paths.splice(idx, 1)
-    }
-
-    // ── 5. Build continuing lanes (paths that survive beyond this row) ──
-    const continuingLanes = [...new Set(paths.map(p => p.lane))]
-    if (!continuingLanes.includes(majorPath.lane)) continuingLanes.push(majorPath.lane)
-    continuingLanes.sort((a, b) => a - b)
-
-    // ── 6. Determine branch/merge events for the main path ──
-    const isBranch = majorPath.firstRow === i && i > 0
-    const isMerge = endingPaths.length > 0
-
-    result.push({
-      id: commit.id,
-      lane: majorPath.lane,
-      // preMergeLanes: lanes active before ending paths removed (used for willBeActive)
-      preMergeLanes,
-      // continuingLanes: lanes that remain active after this row
-      continuingLanes,
-      isBranch,
-      isMerge,
-      mergeLinks,
-    })
-  }
-
-  return result
-}
-
 // ─── Computed lane routing ─────────────────────────────────────
 const laneRouting = computed(() => {
   return routeLanes(commits.value)
@@ -464,136 +318,20 @@ const graphColWidth = computed(() => {
   return Math.max(80, getLaneX(maxLane) + 20)
 })
 
-// ─── Convenience: laneInfo lookup ──────────────────────────────
-function getLaneX(lane) {
-  return LANE_X_BASE + lane * LANE_X_STEP
-}
-
-function getLaneColor(lane) {
-  return LANE_COLORS[lane % LANE_COLORS.length]
-}
-
 // ═══════════════════════════════════════════════════════════════
-//  PER-ROW SVG GRAPH COLUMN
-// ═══════════════════════════════════════════════════════════════
-//
-//  Each row draws:
-//    1. Vertical through-lines for every active lane
-//    2. Branch curves when a new lane appears
-//    3. Merge curves when a lane ends
-//    4. The commit dot on its own lane
+//  PER-ROW SVG GRAPH COLUMN (Vue wrapper: reads reactive state)
 // ═══════════════════════════════════════════════════════════════
 
 function getRowGraph(commit, index) {
   const data = commits.value
-  if (!data || !data.length) return ''
-
   const routes = laneRouting.value
-  if (!routes || index >= routes.length) return ''
-
-  const r = routes[index]
-  const isFirst = index === 0
-  const rowTop = 0
-  const rowBot = ROW_H
-  const nodeY = DOT_Y
-
-  // Dynamic viewBox width based on maximum lane across all rows
-  const maxLane = Math.max(...routes.flatMap(rr => rr.preMergeLanes), r.lane)
-  const viewW = Math.max(80, getLaneX(maxLane) + 15)
-
-  let svg = `<svg class="graph-svg" viewBox="0 0 ${viewW} ${ROW_H}" xmlns="http://www.w3.org/2000/svg">`
-
-  const myCx = getLaneX(r.lane)
-
-  // ── Identify lanes that should skip vertical segments (curves replace them) ──
-  // Merging lanes: lanes that end at this row — curve replaces top-half vertical
-  const mergingLanes = index > 0
-    ? routes[index - 1].continuingLanes.filter(l =>
-        r.preMergeLanes.includes(l) && !r.continuingLanes.includes(l) && l !== r.lane
-      )
-    : []
-
-  // ── 1. Draw vertical through-lines for every lane ──
-  //   - Merge rows: merging lane has NO top-half (curve handles the connection)
-  //   - Normal rows: full vertical line
-  for (const lane of r.preMergeLanes) {
-    const cx = getLaneX(lane)
-    const color = getLaneColor(lane)
-
-    const wasActive = index > 0 && routes[index - 1].preMergeLanes.includes(lane)
-    const willBeActive = index < data.length - 1 && routes[index + 1].preMergeLanes.includes(lane)
-    const isMerging = mergingLanes.includes(lane)
-
-    // Top half: skip if this lane is merging here (curve replaces it)
-    if (wasActive && !isMerging) {
-      svg += `<line x1="${cx}" y1="${rowTop}" x2="${cx}" y2="${nodeY}" stroke="${color}" stroke-width="2.5" />`
-    }
-
-    // Bottom half: always draw — no branch curves
-    if (willBeActive) {
-      svg += `<line x1="${cx}" y1="${nodeY}" x2="${cx}" y2="${rowBot}" stroke="${color}" stroke-width="2.5" />`
-    }
-  }
-
-  // ── 3. Merge curves: draw from branch TOP (y=0) → commit DOT (y=14) ──
-  // Rightward → right-angle quadratic (SourceGit style)
-  // Leftward  → S-curve cubic with midY±4 (SourceGit style)
-  for (const mLane of mergingLanes) {
-    const mCx = getLaneX(mLane)
-    if (mCx < myCx) {
-      // Rightward curve — right-angle quadratic: control at (curX, lastY)
-      svg += `<path d="M ${mCx} ${rowTop} Q ${myCx} ${rowTop} ${myCx} ${nodeY}" fill="none" stroke="${getLaneColor(mLane)}" stroke-width="2.5" stroke-linecap="round" />`
-    } else {
-      // Leftward curve — cubic bezier S-curve with midY±4
-      const midY = (rowTop + nodeY) / 2
-      svg += `<path d="M ${mCx} ${rowTop} C ${mCx} ${midY + 4} ${myCx} ${midY - 4} ${myCx} ${nodeY}" fill="none" stroke="${getLaneColor(mLane)}" stroke-width="2.5" stroke-linecap="round" />`
-    }
-  }
-
-  // ── 4. Merge parent links (for merge commit's additional parents) ──
-  // All at dot height (nodeY). The new parent path continues downward from nodeY.
-  for (const link of (r.mergeLinks || [])) {
-    const linkCx = getLaneX(link.fromLane)
-    if (linkCx !== myCx) {
-      if (linkCx > myCx) {
-        // Rightward — right-angle quadratic: control at (linkCx, nodeY)
-        svg += `<path d="M ${myCx} ${nodeY} Q ${linkCx} ${nodeY} ${linkCx} ${nodeY}" fill="none" stroke="${getLaneColor(link.fromLane)}" stroke-width="2.5" stroke-dasharray="4,3" />`
-      } else {
-        // Leftward — S-curve cubic with midY±4
-        svg += `<path d="M ${myCx} ${nodeY} C ${myCx} ${nodeY - 4} ${linkCx} ${nodeY + 4} ${linkCx} ${nodeY}" fill="none" stroke="${getLaneColor(link.fromLane)}" stroke-width="2.5" stroke-dasharray="4,3" />`
-      }
-    }
-  }
-
-  // ── 5. Draw commit dot ──
-  const dotCx = getLaneX(r.lane)
-  const dotColor = getLaneColor(r.lane)
-  const isHead = isFirst
-  // Only use actual commit parent data to determine merge — not lane-routing heuristics
-  const isMerge = commit.parents && commit.parents.length > 1
-
-  if (isHead) {
-    // HEAD commit: large hollow ring + small solid center
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="6" fill="none" stroke="${dotColor}" stroke-width="2.5" />`
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="3" fill="${dotColor}" />`
-  } else if (isMerge) {
-    // Merge commit: large solid dot with cross
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="5" fill="${dotColor}" />`
-    svg += `<line x1="${dotCx - 4}" y1="${nodeY}" x2="${dotCx + 4}" y2="${nodeY}" stroke="white" stroke-width="1.5" />`
-    svg += `<line x1="${dotCx}" y1="${nodeY - 4}" x2="${dotCx}" y2="${nodeY + 4}" stroke="white" stroke-width="1.5" />`
-  } else {
-    // Normal commit: solid filled circle
-    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="4" fill="${dotColor}" />`
-  }
-
-  svg += `</svg>`
-  return svg
+  return renderRowGraph(commit, index, data, routes)
 }
 
 // ─── Parse refs string into structured labels ───────────────
 //  'HEAD -> Tony, origin/Tony' → { local: ['Tony'], remote: ['origin/Tony'] }
 function parseRefs(refsStr) {
-  const labels = { local: [], remote: [], tags: [] }
+  const labels = { local: [], remote: [], tags: [], stash: [] }
   if (!refsStr) return labels
 
   // Parse --decorate=full format:
@@ -612,6 +350,8 @@ function parseRefs(refsStr) {
       labels.local.push(clean.replace('refs/heads/', ''))
     } else if (clean.startsWith('refs/tags/')) {
       labels.tags.push(clean.replace('refs/tags/', ''))
+    } else if (clean.startsWith('refs/stash')) {
+      labels.stash.push(clean.replace('refs/', ''))
     } else if (clean.startsWith('origin/')) {
       labels.remote.push(clean)
     } else if (/^v?\d+\./.test(clean)) {
@@ -734,6 +474,15 @@ function parseRefs(refsStr) {
                 <path d="M2 2h5l7 7-5 5-7-7V2z" fill="none" stroke="currentColor" stroke-width="1.2"/>
               </svg>
               {{ t }}
+            </span>
+            <!-- Stash badge -->
+            <span v-for="s in commit._labels.stash" :key="'s-' + s" class="badge badge-stash">
+              <svg class="badge-icon" viewBox="0 0 16 16" width="10" height="10">
+                <rect x="3" y="2" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                <line x1="6" y1="7" x2="10" y2="7" stroke="currentColor" stroke-width="1.2"/>
+                <line x1="8" y1="5" x2="8" y2="9" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+              {{ s }}
             </span>
             <span class="commit-subject">{{ commit.subject }}</span>
           </td>
@@ -971,6 +720,13 @@ function parseRefs(refsStr) {
   background-color: #fff2cc;
   border: 1px solid #d6b656;
   color: #333;
+}
+
+.badge-stash {
+  background-color: #fce4ec;
+  border: 1px solid #e91e63;
+  color: #880e4f;
+  font-weight: 700;
 }
 
 .commit-subject {
