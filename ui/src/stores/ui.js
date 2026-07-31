@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 
 export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)
-  const currentView = ref('changes')
+  const currentView = ref('commits')
   const theme = ref(localStorage.getItem('theme') || 'light')
   const commitRefreshKey = ref(0)
 
