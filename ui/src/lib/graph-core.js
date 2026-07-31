@@ -89,7 +89,9 @@ export function routeLanes(data) {
         let lane = 1
         while (usedLanes.has(lane)) lane++
         if (lane >= nextLane) nextLane = lane + 1
-        const newPath = new PathHelper(parentHash, lane)
+        // 非匹配的 merge parent（如 stash 的 index/untracked）
+        // 設 next=null 讓 path 在下列就被清除，避免空轉線條
+        const newPath = new PathHelper(null, lane)
         newPath.firstRow = i
         newPath.lastRow = i
         paths.push(newPath)
@@ -109,11 +111,24 @@ export function routeLanes(data) {
       if (idx >= 0) paths.splice(idx, 1)
     }
 
-    // Remove orphan paths (next = null, no parent)
+    // Keep orphan lanes alive so each orphan/stash gets its own lane and color.
+    // Rules:
+    //   - Last row: always clean up all orphan paths.
+    //   - Current commit has parents AND path is stale (not this row's): clean up.
+    //   - Current commit is also orphan (no parents): keep all paths alive so each
+    //     consecutive stash gets a unique lane.
     for (let p = paths.length - 1; p >= 0; p--) {
       if (paths[p].next === null) {
-        paths[p].lastRow = i
-        paths.splice(p, 1)
+        if (i === data.length - 1) {
+          // Last row — always clean up all orphan paths
+          paths[p].lastRow = i
+          paths.splice(p, 1)
+        } else if (commit.parents.length > 0 && paths[p].firstRow !== i) {
+          // Current commit has parents AND this is a stale orphan — clean up
+          paths[p].lastRow = i
+          paths.splice(p, 1)
+        }
+        // Otherwise keep the lane alive (current commit is also orphan/stash)
       }
     }
 
@@ -217,7 +232,8 @@ export function getRowGraph(commit, index, data, routes, fixedWidth) {
     }
   }
 
-  // ── 3. Merge parent links (dashed) ──
+  // ── 3. Merge parent links (dashed) — 跳過 stash（fork 做法）
+  if (!commit.isStash) {
   for (const link of (r.mergeLinks || [])) {
     const linkCx = getLaneX(link.fromLane)
     if (linkCx !== myCx) {
@@ -228,11 +244,12 @@ export function getRowGraph(commit, index, data, routes, fixedWidth) {
       }
     }
   }
+  }
 
   // ── 4. Commit dot ──
   const dotCx = getLaneX(r.lane)
   const dotColor = getLaneColor(r.lane)
-  const isMergeCommit = commit.parents && commit.parents.length > 1
+  const isMergeCommit = commit.parents && commit.parents.length > 1 && !commit.isStash
 
   if (isFirst) {
     // HEAD: large hollow ring + small solid center

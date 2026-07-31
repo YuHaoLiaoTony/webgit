@@ -136,8 +136,37 @@ const inlineCommitError = ref(null)
 
 // ─── AI commit message generation ────────────────────────────────────
 const aiGenerating = ref(false)
+const aiPromptSaving = ref(false)
 const customPrompt = ref('')
 const showCustomPrompt = ref(false)
+
+// Load the prompt saved in git config (webgit.aiprompt)
+async function loadSavedPrompt() {
+  const { get } = useApi()
+  try {
+    const config = await get('/config')
+    if (config.aiPrompt) {
+      customPrompt.value = config.aiPrompt
+    }
+  } catch (_) {
+    // Config may be unavailable — ignore and keep the prompt empty
+  }
+}
+
+// Save the current prompt to git config (empty → clear saved prompt)
+async function savePrompt() {
+  const { post } = useApi()
+  const toast = useToast()
+  aiPromptSaving.value = true
+  try {
+    await post('/config', { key: 'webgit.aiprompt', value: customPrompt.value.trim() })
+    toast.showToast(customPrompt.value.trim() ? '提示詞已保存到 git config' : '提示詞已清除', 'success')
+  } catch (e) {
+    toast.showToast(`保存失敗：${e.message}`, 'error')
+  } finally {
+    aiPromptSaving.value = false
+  }
+}
 
 async function generateAIMessage() {
   const { post } = useApi()
@@ -485,6 +514,9 @@ onMounted(() => {
   // Fetch status from the real API
   statusStore.fetchStatus()
 
+  // Load the prompt saved in git config
+  loadSavedPrompt()
+
   // Set staged panel to ~50% of files panel height by default
   nextTick(() => {
     if (filesPanelRef.value && stagedRef.value) {
@@ -681,6 +713,12 @@ onUnmounted(() => {
                 @click="showCustomPrompt = !showCustomPrompt"
                 :title="showCustomPrompt ? 'Hide custom prompt' : 'Add custom prompt'"
               >📝</button>
+              <button
+                class="cv-ai-prompt-btn"
+                :disabled="aiPromptSaving"
+                @click="savePrompt"
+                title="保存提示詞到 git config（清空後保存＝清除已保存的提示詞）"
+              >💾</button>
             </div>
             <div v-if="showCustomPrompt" class="cv-custom-prompt-wrap">
               <textarea
@@ -1091,6 +1129,11 @@ onUnmounted(() => {
 
 .cv-ai-prompt-btn:hover {
   background-color: #e8eaec;
+}
+
+.cv-ai-prompt-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .cv-custom-prompt-wrap {

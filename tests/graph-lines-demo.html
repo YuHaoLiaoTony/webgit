@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Commit Graph 線條展示 — 16 種情境</title>
+<title>Commit Graph — 17 種情境</title>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#333}
@@ -19,14 +19,11 @@
 
   .panel{display:none;padding:20px 24px;max-width:1100px;margin:0 auto}
   .panel.active{display:block}
-
   .panel-title{font-size:20px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
   .scenario-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#0f3460;color:#fff;font-size:13px;font-weight:700}
   .panel-sub{font-size:13px;color:#4a90e2;font-weight:600;margin-bottom:4px}
   .panel-desc{font-size:13px;color:#888;margin-bottom:16px;line-height:1.6}
-  .panel-desc code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-size:12px;color:#e056fd}
-  .panel-desc strong{color:#333;font-weight:600}
-  .panel-desc em{color:#e056fd;font-style:normal;font-weight:600}
+  .panel-desc strong{color:#333}
 
   .graph-container{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow-x:auto}
   .graph-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:500px}
@@ -45,6 +42,7 @@
   .tag-b03{background:#fce4ec;color:#c62828;border:1px solid #ef9a9a}
   .tag-merge{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8}
   .tag-final{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
+  .tag-rls{background:#e0f7fa;color:#00695c;border:1px solid #80deea}
 
   .badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:3px}
   .badge-branch{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
@@ -53,12 +51,9 @@
   .badge-head{background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
   .badge-orphan{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8}
   .badge-lane{background:#f5f5f5;color:#555;border:1px solid #ccc}
+  .badge-stash{background:#fce4ec;color:#880e4f;border:1px solid #e91e63;font-weight:700}
+  .stash-from{color:#e91e63;font-size:11px;font-weight:600;margin-left:4px}
   .color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;vertical-align:middle}
-  .lane-hint{font-size:10px;color:#999}
-
-  .branch-labels{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;padding:10px 14px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-  .bl{display:flex;align-items:center;gap:4px;font-size:11px;color:#555}
-  .bl-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--dot-color,#888)}
 
   .legend{display:flex;flex-wrap:wrap;gap:12px;max-width:1100px;margin:8px auto 0;padding:10px 24px;font-size:11px;color:#666}
   .legend-item{display:flex;align-items:center;gap:4px}
@@ -67,33 +62,20 @@
   .empty-box{background:#fff;border-radius:8px;padding:40px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
   .empty-icon{font-size:40px;margin-bottom:12px}
 
-  .data-block{background:#1a1a2e;color:#e8e8e8;border-radius:6px;padding:12px 16px;font-family:'SF Mono',Consolas,monospace;font-size:11px;line-height:1.6;overflow-x:auto;margin-top:12px;white-space:pre}
-  .data-block .comment{color:#6a9955}
-
-  .data-block-wrapper{margin-top:12px}
-  .data-block-summary{cursor:pointer;font-size:12px;color:#666;padding:6px 0;user-select:none}
-
   .nav{display:flex;justify-content:center;gap:8px;margin:20px 0 40px}
   .nav-btn{padding:8px 18px;font-size:12px;font-weight:600;border:1px solid #d0d0d0;background:#fff;color:#555;border-radius:6px;cursor:pointer;transition:all 0.15s}
   .nav-btn:hover{background:#f0f4f8;border-color:#4a90e2;color:#2563eb}
   .nav-btn:disabled{opacity:0.4;cursor:default}
   .nav-btn .key-h{display:inline-block;background:#e8e8e8;padding:0 5px;border-radius:3px;font-size:10px;margin-left:4px;color:#888}
-
-  .summary{margin:0 auto 40px;max-width:1100px;padding:0 24px}
-  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-  .summary-card{background:#fff;border-radius:8px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-  .summary-card .num{font-size:24px;font-weight:700;color:#0f3460}
-  .summary-card .lbl{font-size:11px;color:#888;margin-top:2px}
 </style>
 </head>
 <body>
 <div class="header">
   <h1>📊 Commit Graph 線條展示</h1>
-  <p>DAG 路線演算法 — 由 graph-core.js 即時產生 · 16 種情境</p>
+  <p>DAG 路線演算法 · 17 種情境</p>
   <span class="ver">routeLanes() + getRowGraph()</span>
 </div>
-<div class="tab-bar">
-<button class="tab active" onclick="switchTab(0)">1. 空資料</button>
+<div class="tab-bar"><button class="tab active" onclick="switchTab(0)">1. 空資料</button>
 <button class="tab" onclick="switchTab(1)">2. 單一提交</button>
 <button class="tab" onclick="switchTab(2)">3. 線性鏈</button>
 <button class="tab" onclick="switchTab(3)">4. 分支 (Fork)</button>
@@ -109,800 +91,371 @@
 <button class="tab" onclick="switchTab(13)">14. First-Parent 線性</button>
 <button class="tab" onclick="switchTab(14)">15. 非末端分支</button>
 <button class="tab" onclick="switchTab(15)">16. 多分支依序合併到 release</button>
-</div>
+<button class="tab" onclick="switchTab(16)">17. 真實情境：2 分支 + 3 Stash</button></div>
 <div class="legend">
   <span class="legend-item"><span class="legend-dot" style="background:#f5a623"></span> L0</span>
   <span class="legend-item"><span class="legend-dot" style="background:#4a90e2"></span> L1</span>
   <span class="legend-item"><span class="legend-dot" style="background:#e056fd"></span> L2</span>
   <span class="legend-item"><span class="legend-dot" style="background:#28a745"></span> L3</span>
   <span class="legend-item"><span class="legend-dot" style="background:#cb2431"></span> L4</span>
-  <span class="legend-item">⬤ 一般提交</span>
+  <span class="legend-item">⬤ 一般</span>
   <span class="legend-item">◯ HEAD</span>
   <span class="legend-item">✚ 合併</span>
-  <span class="legend-item">- - merge link</span>
-  <span class="legend-item">┘ 右向合併</span>
-  <span class="legend-item">〜 左向合併</span>
 </div>
 <div id="panels">
-<div class="panel" id="panel-0">
-      <div class="panel-title"><span class="scenario-num">1</span> 空資料</div>
+
+<div class="panel" id="panel-0"><div class="panel-title"><span class="scenario-num">1</span> 空資料</div>
       <div style="font-size:13px;color:#4a90e2;font-weight:600;margin-bottom:4px;">沒有 commit 時的邊界情況</div>
       <div class="panel-desc">當 routeLanes(null | undefined | []) 時回傳空陣列。沒有任何線條或節點。</div>
-      <div class="empty-box"><div class="empty-icon">📭</div><div>No commits to display</div></div>
-      <div class="data-block"><span class="comment">// 沒有 commit 時的邊界情況</span>
-const commits = []</div>
-    </div>
-<div class="panel" id="panel-1">
-    <div class="panel-title"><span class="scenario-num">2</span> 單一提交</div>
-    <div class="panel-sub">只有一個 root commit</div>
-    <div class="panel-desc">一個孤立的 root commit，建立 lane 1，節點為 HEAD 空心大圓。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// 只有一個 root commit</span>
-const commits = [
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-2">
-    <div class="panel-title"><span class="scenario-num">3</span> 線性鏈</div>
-    <div class="panel-sub">A ← B ← C — 單純直線</div>
-    <div class="panel-desc">三個 commit 在同一條 lane 上垂直串聯，每筆只有一個 parent。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// A ← B ← C — 單純直線</span>
-const commits = [
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-3">
-    <div class="panel-title"><span class="scenario-num">4</span> 分支 (Fork)</div>
-    <div class="panel-sub">D 從 A 分出，主線 A→B→C</div>
-    <div class="panel-desc">D 從 A 分支，與主線 B→C 並行。兩條垂直線並列的 branch 曲線。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1,2]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// D 從 A 分出，主線 A→B→C</span>
-const commits = [
-  { id: 'D', parents: ['A'] },
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-4">
-    <div class="panel-title"><span class="scenario-num">5</span> 合併 (Merge)</div>
-    <div class="panel-sub">D = C + B 合併提交</div>
-    <div class="panel-desc">B（主線）和 C（分支）在 D 合併。mergeLinks 用虛線連接到第二個 parent 的 lane，合併節點顯示十字圓 ✚。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1,2]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// D = C + B 合併提交</span>
-const commits = [
-  { id: 'D', parents: ['C', 'B'] },
-  { id: 'C', parents: ['A'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-5">
-    <div class="panel-title"><span class="scenario-num">6</span> 多重合併 (Octopus)</div>
-    <div class="panel-sub">M 同時合併 A, B, C, D 四個 parent</div>
-    <div class="panel-desc">一個 merge commit 合併超過 2 個 branch，每個額外 parent 產生一條 mergeLinks 虛線。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><path d="M 13 14 Q 34 14 34 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>M</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 3 link(s)</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>R</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1,2,3,4]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// M 同時合併 A, B, C, D 四個 parent</span>
-const commits = [
-  { id: 'M', parents: ['A', 'B', 'C', 'D'] },
-  { id: 'D', parents: ['R'] },
-  { id: 'C', parents: ['R'] },
-  { id: 'B', parents: ['R'] },
-  { id: 'A', parents: ['R'] },
-  { id: 'R', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-6">
-    <div class="panel-title"><span class="scenario-num">7</span> 多條分支</div>
-    <div class="panel-sub">F、E 從 C 分支，D 從 B 分支</div>
-    <div class="panel-desc">同時多條 active branch 交錯顯示。演算法管理 3 條並行 lane。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>F</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>E</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="lane-hint">cont:[1,3] pre:[1,2,3]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="lane-hint">cont:[1] pre:[1,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// F、E 從 C 分支，D 從 B 分支</span>
-const commits = [
-  { id: 'F', parents: ['C'] },
-  { id: 'E', parents: ['C'] },
-  { id: 'D', parents: ['B'] },
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-7">
-    <div class="panel-title"><span class="scenario-num">8</span> 分支+合併同節點</div>
-    <div class="panel-sub">E → D（合併 C+B）</div>
-    <div class="panel-desc">D 既是合併點，也是 E 的 parent。測試合併後繼續延伸：major path 在 merge 後繼續前進。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>E</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1,2]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// E → D（合併 C+B）</span>
-const commits = [
-  { id: 'E', parents: ['D'] },
-  { id: 'D', parents: ['C', 'B'] },
-  { id: 'C', parents: ['A'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-8">
-    <div class="panel-title"><span class="scenario-num">9</span> 車道重複使用</div>
-    <div class="panel-sub">Branch 結束後釋放 lane 給新分支</div>
-    <div class="panel-desc">E 在 D 合併後結束，釋放 lane。G 可重新使用此 lane，避免圖表無限變寬。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>G</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>F</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>E</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,3] pre:[1,2,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,3] pre:[1,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,3] pre:[1,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[3] pre:[1,3]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// Branch 結束後釋放 lane 給新分支</span>
-const commits = [
-  { id: 'G', parents: ['F'] },
-  { id: 'F', parents: ['D'] },
-  { id: 'E', parents: ['D'] },
-  { id: 'D', parents: ['C', 'E'] },
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-9">
-    <div class="panel-title"><span class="scenario-num">10</span> 孤兒提交 (Orphan)</div>
-    <div class="panel-sub">無 parent 的孤立 commit（如 stash）</div>
-    <div class="panel-desc">O 沒有 parent (null)。演算法建立 path 後立即清除（next=null），O 下方無垂直線。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>O</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// 無 parent 的孤立 commit（如 stash）</span>
-const commits = [
-  { id: 'O', parents: [] },
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-10">
-    <div class="panel-title"><span class="scenario-num">11</span> 超過 10 條車道</div>
-    <div class="panel-sub">12 條 branch 測試顏色循環</div>
-    <div class="panel-desc">超過 LANE_COLORS 長度 (10) 時顏色循環。8 以上 lane 測試 lane % colors.length。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>B11</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B10</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>B9</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td>
-      <td><strong>B8</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="41" cy="14" r="4" fill="#00bcd4" /></svg></td>
-      <td><strong>B7</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#00bcd4"></span> L5</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><circle cx="48" cy="14" r="4" fill="#ff5722" /></svg></td>
-      <td><strong>B6</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#ff5722"></span> L6</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6] pre:[1,2,3,4,5,6]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><circle cx="55" cy="14" r="4" fill="#9c27b0" /></svg></td>
-      <td><strong>B5</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#9c27b0"></span> L7</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6,7] pre:[1,2,3,4,5,6,7]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><circle cx="62" cy="14" r="4" fill="#8bc34a" /></svg></td>
-      <td><strong>B4</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#8bc34a"></span> L8</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6,7,8] pre:[1,2,3,4,5,6,7,8]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><circle cx="69" cy="14" r="4" fill="#ff9800" /></svg></td>
-      <td><strong>B3</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#ff9800"></span> L9</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6,7,8,9] pre:[1,2,3,4,5,6,7,8,9]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="0" x2="69" y2="14" stroke="#ff9800" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><line x1="76" y1="14" x2="76" y2="28" stroke="#f5a623" stroke-width="2.5" /><circle cx="76" cy="14" r="4" fill="#f5a623" /></svg></td>
-      <td><strong>B2</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#f5a623"></span> L10</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6,7,8,9,10] pre:[1,2,3,4,5,6,7,8,9,10]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="0" x2="69" y2="14" stroke="#ff9800" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><line x1="76" y1="0" x2="76" y2="14" stroke="#f5a623" stroke-width="2.5" /><line x1="76" y1="14" x2="76" y2="28" stroke="#f5a623" stroke-width="2.5" /><line x1="83" y1="14" x2="83" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="83" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B1</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L11</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6,7,8,9,10,11] pre:[1,2,3,4,5,6,7,8,9,10,11]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="0" x2="69" y2="14" stroke="#ff9800" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><line x1="76" y1="0" x2="76" y2="14" stroke="#f5a623" stroke-width="2.5" /><line x1="76" y1="14" x2="76" y2="28" stroke="#f5a623" stroke-width="2.5" /><line x1="83" y1="0" x2="83" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="83" y1="14" x2="83" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="90" y1="14" x2="90" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="90" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B0</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L12</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2,3,4,5,6,7,8,9,10,11,12] pre:[1,2,3,4,5,6,7,8,9,10,11,12]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><path d="M 41 0 C 41 11 13 3 13 14" fill="none" stroke="#00bcd4" stroke-width="2.5" stroke-linecap="round" /><path d="M 48 0 C 48 11 13 3 13 14" fill="none" stroke="#ff5722" stroke-width="2.5" stroke-linecap="round" /><path d="M 55 0 C 55 11 13 3 13 14" fill="none" stroke="#9c27b0" stroke-width="2.5" stroke-linecap="round" /><path d="M 62 0 C 62 11 13 3 13 14" fill="none" stroke="#8bc34a" stroke-width="2.5" stroke-linecap="round" /><path d="M 69 0 C 69 11 13 3 13 14" fill="none" stroke="#ff9800" stroke-width="2.5" stroke-linecap="round" /><path d="M 76 0 C 76 11 13 3 13 14" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" /><path d="M 83 0 C 83 11 13 3 13 14" fill="none" stroke="#4a90e2" stroke-width="2.5" stroke-linecap="round" /><path d="M 90 0 C 90 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>R</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1,2,3,4,5,6,7,8,9,10,11,12]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// 12 條 branch 測試顏色循環</span>
-const commits = [
-  { id: 'B11', parents: ['R'] },
-  { id: 'B10', parents: ['R'] },
-  { id: 'B9', parents: ['R'] },
-  { id: 'B8', parents: ['R'] },
-  { id: 'B7', parents: ['R'] },
-  { id: 'B6', parents: ['R'] },
-  { id: 'B5', parents: ['R'] },
-  { id: 'B4', parents: ['R'] },
-  { id: 'B3', parents: ['R'] },
-  { id: 'B2', parents: ['R'] },
-  { id: 'B1', parents: ['R'] },
-  { id: 'B0', parents: ['R'] },
-  { id: 'R', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-11">
-    <div class="panel-title"><span class="scenario-num">12</span> 左右曲線</div>
-    <div class="panel-sub">合併來自不同方向的 lane</div>
-    <div class="panel-desc">右向 (mCx < myCx)→ 直角二次貝茲 Q；左向 (mCx > myCx) → S 形三次貝茲 C。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>M</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 2 link(s)</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1,2,3]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// 合併來自不同方向的 lane</span>
-const commits = [
-  { id: 'M', parents: ['C', 'B', 'D'] },
-  { id: 'D', parents: ['A'] },
-  { id: 'C', parents: ['A'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-12">
-    <div class="panel-title"><span class="scenario-num">13</span> 複雜 DAG</div>
-    <div class="panel-sub">交錯分支與合併的真實情境</div>
-    <div class="panel-desc">I → H（merge G+F）→ 兩條 lineage 交錯 (G→E→D→B, F→C→B) → B→A。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>I</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td>
-      <td><strong>H</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>G</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>F</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>E</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="lane-hint">cont:[1] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// 交錯分支與合併的真實情境</span>
-const commits = [
-  { id: 'I', parents: ['H'] },
-  { id: 'H', parents: ['G', 'F'] },
-  { id: 'G', parents: ['E'] },
-  { id: 'F', parents: ['C'] },
-  { id: 'E', parents: ['D'] },
-  { id: 'D', parents: ['B'] },
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-13">
-    <div class="panel-title"><span class="scenario-num">14</span> First-Parent 線性</div>
-    <div class="panel-sub">啟用 First-Parent 篩選的線性歷史</div>
-    <div class="panel-desc">merge commit 只顯示第一個 parent，形成純線性鏈。全部使用同一條 lane。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>E</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[1] pre:[1,2]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// 啟用 First-Parent 篩選的線性歷史</span>
-const commits = [
-  { id: 'E', parents: ['D'] },
-  { id: 'D', parents: ['C'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'C', parents: ['B'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-14">
-    <div class="panel-title"><span class="scenario-num">15</span> 非末端分支</div>
-    <div class="panel-sub">F 從 C（非最新）分支</div>
-    <div class="panel-desc">F 從 C 分支（backport 情境），E 從 D（C 的子孫）繼續。驗證 lane 正確對齊。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:130px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>F</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>E</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td>
-      <td><strong>D</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>C</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="lane-hint">cont:[1] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>B</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>A</strong></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="data-block"><span class="comment">// F 從 C（非最新）分支</span>
-const commits = [
-  { id: 'F', parents: ['C'] },
-  { id: 'E', parents: ['D'] },
-  { id: 'D', parents: ['C'] },
-  { id: 'C', parents: ['B'] },
-  { id: 'B', parents: ['A'] },
-  { id: 'A', parents: [] }
-]</div>
-  </div>
-<div class="panel" id="panel-15">
-    <div class="panel-title"><span class="scenario-num">16</span> 多分支依序合併到 release</div>
-    <div class="panel-sub">5 master commits · 3 分支 · 依序合併</div>
-    <div class="panel-desc"><strong>master</strong> 5 個線性 commit (M1～M5)。
-      <strong>branch01/branch02/branch03</strong> 從 M5 分支，各有 1/2/3 個 commit。
-      <strong>release</strong> 從 M5 分支後，依序合併三個分支：
-      merge01←branch01 → merge02←branch02 → merge03←branch03。
-      最後 release 合併回 master → <strong>M</strong>。
-      每個合併都是獨立新節點，不會覆蓋到同一個節點。</div>
-    <div class="graph-container">
-      <table class="graph-table">
-        <thead><tr>
-          <th class="col-graph" style="width:160px">Graph</th>
-          <th>Commit</th>
-          <th>Lane Info</th>
-        </tr></thead>
-        <tbody><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td>
-      <td><strong>M</strong> <span class="tag tag-final">release→master</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2] pre:[1,2]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td>
-      <td><strong>merge03</strong> <span class="tag tag-merge">release 合併</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2,3] pre:[1,2,3]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 13 14 Q 34 14 34 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td>
-      <td><strong>merge02</strong> <span class="tag tag-merge">release 合併</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2,3,4] pre:[1,2,3,4]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><path d="M 13 14 Q 41 14 41 14" fill="none" stroke="#00bcd4" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td>
-      <td><strong>merge01</strong> <span class="tag tag-merge">release 合併</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>b03-3</strong> <span class="tag tag-b03">branch03</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>b03-2</strong> <span class="tag tag-b03">branch03</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td>
-      <td><strong>b03-1</strong> <span class="tag tag-b03">branch03</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td>
-      <td><strong>b02-2</strong> <span class="tag tag-b02">branch02</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td>
-      <td><strong>b02-1</strong> <span class="tag tag-b02">branch02</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="41" cy="14" r="4" fill="#00bcd4" /></svg></td>
-      <td><strong>b01-1</strong> <span class="tag tag-b01">branch01</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#00bcd4"></span> L5</span> <span class="lane-hint">cont:[1,2,3,4,5] pre:[1,2,3,4,5]</span></td>
-    </tr><tr class="hl">
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><path d="M 41 0 C 41 11 13 3 13 14" fill="none" stroke="#00bcd4" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>M5</strong> <span class="tag tag-master">master HEAD</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="lane-hint">cont:[1] pre:[1,2,3,4,5]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>M4</strong> <span class="tag tag-master">master</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>M3</strong> <span class="tag tag-master">master</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>M2</strong> <span class="tag tag-master">master</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="lane-hint">cont:[1] pre:[1]</span></td>
-    </tr><tr>
-      <td class="col-graph"><svg class="graph-svg" viewBox="0 0 160 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td>
-      <td><strong>M1</strong> <span class="tag tag-master">master 起點</span></td>
-      <td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span> <span class="lane-hint">cont:[] pre:[1]</span></td>
-    </tr></tbody>
-      </table>
-    </div>
-    <div class="branch-labels">
-      <span class="bl" style="--dot-color:#f5a623"><span class="bl-dot"></span> L0 — branch01 (b01-1)</span>
-      <span class="bl" style="--dot-color:#4a90e2"><span class="bl-dot"></span> L1 — branch02 (b02-1, b02-2)</span>
-      <span class="bl" style="--dot-color:#e056fd"><span class="bl-dot"></span> L2 — branch03 (b03-1, b03-2, b03-3)</span>
-      <span class="bl" style="--dot-color:#28a745"><span class="bl-dot"></span> L3 — release (merge01→merge02→merge03)</span>
-      <span class="bl" style="--dot-color:#cb2431"><span class="bl-dot"></span> L4 — master (M1～M5)</span>
-    </div>
-    <details class="data-block-wrapper">
-      <summary class="data-block-summary">📝 查看原始資料</summary>
-      <div class="data-block"><span class="comment">// 5 master commits · 3 分支 · 依序合併</span>
-const commits = [
-  { id: 'M', parents: ['merge03', 'M5'] },
-  { id: 'merge03', parents: ['merge02', 'b03-3'] },
-  { id: 'merge02', parents: ['merge01', 'b02-2'] },
-  { id: 'merge01', parents: ['M5', 'b01-1'] },
-  { id: 'b03-3', parents: ['b03-2'] },
-  { id: 'b03-2', parents: ['b03-1'] },
-  { id: 'b03-1', parents: ['M5'] },
-  { id: 'b02-2', parents: ['b02-1'] },
-  { id: 'b02-1', parents: ['M5'] },
-  { id: 'b01-1', parents: ['M5'] },
-  { id: 'M5', parents: ['M4'] },
-  { id: 'M4', parents: ['M3'] },
-  { id: 'M3', parents: ['M2'] },
-  { id: 'M2', parents: ['M1'] },
-  { id: 'M1', parents: [] }
-]</div>
-    </details>
-  </div>
-</div>
+      <div class="empty-box"><div class="empty-icon">📭</div><div>No commits</div></div></div>
+<div class="panel" id="panel-1"><div class="panel-title"><span class="scenario-num">2</span> 單一提交</div>
+    <div class="panel-sub">只有一個 root commit</div><div class="panel-desc">一個孤立的 root commit，建立 lane 1，節點為 HEAD 空心大圓。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-2"><div class="panel-title"><span class="scenario-num">3</span> 線性鏈</div>
+    <div class="panel-sub">A ← B ← C — 單純直線</div><div class="panel-desc">三個 commit 在同一條 lane 上垂直串聯，每筆只有一個 parent。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-3"><div class="panel-title"><span class="scenario-num">4</span> 分支 (Fork)</div>
+    <div class="panel-sub">D 從 A 分出，主線 A→B→C</div><div class="panel-desc">D 從 A 分支，與主線 B→C 並行。兩條垂直線並列的 branch 曲線。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-4"><div class="panel-title"><span class="scenario-num">5</span> 合併 (Merge)</div>
+    <div class="panel-sub">D = C + B 合併提交</div><div class="panel-desc">B（主線）和 C（分支）在 D 合併。mergeLinks 用虛線連接到第二個 parent 的 lane，合併節點顯示十字圓 ✚。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-5"><div class="panel-title"><span class="scenario-num">6</span> 多重合併 (Octopus)</div>
+    <div class="panel-sub">M 同時合併 A, B, C, D 四個 parent</div><div class="panel-desc">一個 merge commit 合併超過 2 個 branch。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><path d="M 13 14 Q 34 14 34 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>M</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 3 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><path d="M 20 0 Q 41 0 41 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 Q 41 0 41 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 Q 41 0 41 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><circle cx="41" cy="14" r="4" fill="#00bcd4" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#00bcd4"></span> L5</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 41 0 C 41 11 13 3 13 14" fill="none" stroke="#00bcd4" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>R</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-6"><div class="panel-title"><span class="scenario-num">7</span> 多條分支</div>
+    <div class="panel-sub">F、E 從 C 分支，D 從 B 分支</div><div class="panel-desc">同時多條 active branch 交錯顯示。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>F</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>E</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-7"><div class="panel-title"><span class="scenario-num">8</span> 分支+合併同節點</div>
+    <div class="panel-sub">E → D（合併 C+B）</div><div class="panel-desc">D 既是合併點，也是 E 的 parent。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>E</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-8"><div class="panel-title"><span class="scenario-num">9</span> 車道重複使用</div>
+    <div class="panel-sub">Branch 結束後釋放 lane 給新分支</div><div class="panel-desc">E 在 D 合併後結束，釋放 lane。G 可重新使用此 lane。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>G</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>F</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>E</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-9"><div class="panel-title"><span class="scenario-num">10</span> 孤兒提交 (Orphan)</div>
+    <div class="panel-sub">無 parent 的孤立 commit</div><div class="panel-desc">O 沒有 parent (null)。演算法建立 path 後立即清除。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>O</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-orphan">● Root</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 0 Q 20 0 20 14" fill="none" stroke="#4a90e2" stroke-width="2.5" stroke-linecap="round" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-10"><div class="panel-title"><span class="scenario-num">11</span> 超過 10 條車道</div>
+    <div class="panel-sub">12 條 branch 測試顏色循環</div><div class="panel-desc">超過 LANE_COLORS 長度 (10) 時顏色循環。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>B11</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B10</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td><td><strong>B9</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td><td><strong>B8</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="41" cy="14" r="4" fill="#00bcd4" /></svg></td><td><strong>B7</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#00bcd4"></span> L5</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><circle cx="48" cy="14" r="4" fill="#ff5722" /></svg></td><td><strong>B6</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#ff5722"></span> L6</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><circle cx="55" cy="14" r="4" fill="#9c27b0" /></svg></td><td><strong>B5</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#9c27b0"></span> L7</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><circle cx="62" cy="14" r="4" fill="#8bc34a" /></svg></td><td><strong>B4</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#8bc34a"></span> L8</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><circle cx="69" cy="14" r="4" fill="#ff9800" /></svg></td><td><strong>B3</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#ff9800"></span> L9</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="0" x2="69" y2="14" stroke="#ff9800" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><line x1="76" y1="14" x2="76" y2="28" stroke="#f5a623" stroke-width="2.5" /><circle cx="76" cy="14" r="4" fill="#f5a623" /></svg></td><td><strong>B2</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#f5a623"></span> L10</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="0" x2="69" y2="14" stroke="#ff9800" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><line x1="76" y1="0" x2="76" y2="14" stroke="#f5a623" stroke-width="2.5" /><line x1="76" y1="14" x2="76" y2="28" stroke="#f5a623" stroke-width="2.5" /><line x1="83" y1="14" x2="83" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="83" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>B1</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L11</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><line x1="48" y1="0" x2="48" y2="14" stroke="#ff5722" stroke-width="2.5" /><line x1="48" y1="14" x2="48" y2="28" stroke="#ff5722" stroke-width="2.5" /><line x1="55" y1="0" x2="55" y2="14" stroke="#9c27b0" stroke-width="2.5" /><line x1="55" y1="14" x2="55" y2="28" stroke="#9c27b0" stroke-width="2.5" /><line x1="62" y1="0" x2="62" y2="14" stroke="#8bc34a" stroke-width="2.5" /><line x1="62" y1="14" x2="62" y2="28" stroke="#8bc34a" stroke-width="2.5" /><line x1="69" y1="0" x2="69" y2="14" stroke="#ff9800" stroke-width="2.5" /><line x1="69" y1="14" x2="69" y2="28" stroke="#ff9800" stroke-width="2.5" /><line x1="76" y1="0" x2="76" y2="14" stroke="#f5a623" stroke-width="2.5" /><line x1="76" y1="14" x2="76" y2="28" stroke="#f5a623" stroke-width="2.5" /><line x1="83" y1="0" x2="83" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="83" y1="14" x2="83" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="90" y1="14" x2="90" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="90" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B0</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L12</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><path d="M 41 0 C 41 11 13 3 13 14" fill="none" stroke="#00bcd4" stroke-width="2.5" stroke-linecap="round" /><path d="M 48 0 C 48 11 13 3 13 14" fill="none" stroke="#ff5722" stroke-width="2.5" stroke-linecap="round" /><path d="M 55 0 C 55 11 13 3 13 14" fill="none" stroke="#9c27b0" stroke-width="2.5" stroke-linecap="round" /><path d="M 62 0 C 62 11 13 3 13 14" fill="none" stroke="#8bc34a" stroke-width="2.5" stroke-linecap="round" /><path d="M 69 0 C 69 11 13 3 13 14" fill="none" stroke="#ff9800" stroke-width="2.5" stroke-linecap="round" /><path d="M 76 0 C 76 11 13 3 13 14" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" /><path d="M 83 0 C 83 11 13 3 13 14" fill="none" stroke="#4a90e2" stroke-width="2.5" stroke-linecap="round" /><path d="M 90 0 C 90 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>R</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-11"><div class="panel-title"><span class="scenario-num">12</span> 左右曲線</div>
+    <div class="panel-sub">合併來自不同方向的 lane</div><div class="panel-desc">右向 → 直角二次貝茲 Q；左向 → S 形三次貝茲 C。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><path d="M 13 14 Q 27 14 27 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>M</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 2 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 20 0 Q 34 0 34 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 Q 34 0 34 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-12"><div class="panel-title"><span class="scenario-num">13</span> 複雜 DAG</div>
+    <div class="panel-sub">交錯分支與合併的真實情境</div><div class="panel-desc">I → H（merge G+F）→ 兩條 lineage 交錯。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>I</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="5" fill="#4a90e2" /><line x1="9" y1="14" x2="17" y2="14" stroke="white" stroke-width="1.5" /><line x1="13" y1="10" x2="13" y2="18" stroke="white" stroke-width="1.5" /></svg></td><td><strong>H</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>G</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>F</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>E</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-13"><div class="panel-title"><span class="scenario-num">14</span> First-Parent 線性</div>
+    <div class="panel-sub">啟用 First-Parent 篩選的線性歷史</div><div class="panel-desc">merge commit 只顯示第一個 parent，形成純線性鏈。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>E</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-14"><div class="panel-title"><span class="scenario-num">15</span> 非末端分支</div>
+    <div class="panel-sub">F 從 C（非最新）分支</div><div class="panel-desc">F 從 C 分支（backport 情境），E 從 D 繼續。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>F</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>E</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>D</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>C</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>B</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>A</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-15"><div class="panel-title"><span class="scenario-num">16</span> 多分支依序合併到 release</div>
+    <div class="panel-sub">5 master · 3 分支 · 依序合併</div><div class="panel-desc"><strong>master</strong> 5 個線性 commit。<strong>branch01/02/03</strong> 從 M5 分支，各有 1/2/3 個 commit。
+      <strong>release</strong> 從 M5 分支後，依序合併三個分支。最後合併回 master → <strong>M</strong>。</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 13 14 Q 20 14 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>M</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 20 0 Q 27 0 27 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 14 Q 34 14 34 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="27" cy="14" r="5" fill="#28a745" /><line x1="23" y1="14" x2="31" y2="14" stroke="white" stroke-width="1.5" /><line x1="27" y1="10" x2="27" y2="18" stroke="white" stroke-width="1.5" /></svg></td><td><strong>merge03</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-branch">⊞ Branch</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 34 0 C 34 11 27 3 27 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 14 C 27 10 20 18 20 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="27" cy="14" r="5" fill="#28a745" /><line x1="23" y1="14" x2="31" y2="14" stroke="white" stroke-width="1.5" /><line x1="27" y1="10" x2="27" y2="18" stroke="white" stroke-width="1.5" /></svg></td><td><strong>merge02</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 20 0 Q 27 0 27 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 14 Q 34 14 34 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-dasharray="4,3" /><circle cx="27" cy="14" r="5" fill="#28a745" /><line x1="23" y1="14" x2="31" y2="14" stroke="white" stroke-width="1.5" /><line x1="27" y1="10" x2="27" y2="18" stroke="white" stroke-width="1.5" /></svg></td><td><strong>merge01</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span> <span class="badge badge-link">↦ 1 link(s)</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 34 0 C 34 11 20 3 20 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>b03-3</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>b03-2</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>b03-1</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td><td><strong>b02-2</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="34" cy="14" r="4" fill="#cb2431" /></svg></td><td><strong>b02-1</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#cb2431"></span> L4</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="41" cy="14" r="4" fill="#00bcd4" /></svg></td><td><strong>b01-1</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#00bcd4"></span> L5</span> <span class="badge badge-branch">⊞ Branch</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><line x1="41" y1="0" x2="41" y2="14" stroke="#00bcd4" stroke-width="2.5" /><line x1="41" y1="14" x2="41" y2="28" stroke="#00bcd4" stroke-width="2.5" /><circle cx="27" cy="14" r="4" fill="#28a745" /></svg></td><td><strong>RLS</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#28a745"></span> L3</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><path d="M 41 0 C 41 11 13 3 13 14" fill="none" stroke="#00bcd4" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>M5</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>M4</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>M3</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>M2</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>M1</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+<div class="panel" id="panel-16"><div class="panel-title"><span class="scenario-num">17</span> 真實情境：2 分支 + 3 Stash</div>
+    <div class="panel-sub">master → feature/login + feature/dashboard + 3 個 stash</div><div class="panel-desc"><strong>feature/login</strong>（5a6b7c8 → 7f8e9d0）和 <strong>feature/dashboard</strong>（b2c3d4e → d4e5f6a）
+      皆從 master（1a2b3c4）分支。3 個 stash 分別產生於兩個分支上，各有獨立車道。
+      <br><br>📦 stash@{0} On feature/dashboard: WIP: Add responsive styles for charts
+      <br>📦 stash@{1} On feature/dashboard: WIP: Temporary mock data for API
+      <br>📦 stash@{2} On feature/login: WIP: Refactor login form state handling</div>
+    <div class="graph-container"><table class="graph-table"><thead><tr><th class="col-graph" style="width:130px">Graph</th><th>Commit</th><th>Badges</th></tr></thead><tbody><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><circle cx="13" cy="14" r="6" fill="none" stroke="#4a90e2" stroke-width="2.5" /><circle cx="13" cy="14" r="3" fill="#4a90e2" /></svg></td><td><strong>stash@{0}</strong> <span class="stash-from">← d4e5f6a</span></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-head">HEAD</span> <span class="badge badge-link">↦ 2 link(s)</span> <span class="badge badge-stash">📦 stash</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>d4e5f6a</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>stash@{1}</strong> <span class="stash-from">← b2c3d4e</span></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="badge badge-link">↦ 2 link(s)</span> <span class="badge badge-stash">📦 stash</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><path d="M 27 0 C 27 11 13 3 13 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 13 3 13 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>b2c3d4e</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><line x1="27" y1="0" x2="27" y2="14" stroke="#28a745" stroke-width="2.5" /><line x1="27" y1="14" x2="27" y2="28" stroke="#28a745" stroke-width="2.5" /><line x1="34" y1="0" x2="34" y2="14" stroke="#cb2431" stroke-width="2.5" /><line x1="34" y1="14" x2="34" y2="28" stroke="#cb2431" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>stash@{2}</strong> <span class="stash-from">← 7f8e9d0</span></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span> <span class="badge badge-branch">⊞ Branch</span> <span class="badge badge-link">↦ 2 link(s)</span> <span class="badge badge-stash">📦 stash</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><path d="M 27 0 C 27 11 20 3 20 14" fill="none" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" /><path d="M 34 0 C 34 11 20 3 20 14" fill="none" stroke="#cb2431" stroke-width="2.5" stroke-linecap="round" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>7f8e9d0</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><line x1="13" y1="14" x2="13" y2="28" stroke="#4a90e2" stroke-width="2.5" /><line x1="20" y1="0" x2="20" y2="14" stroke="#e056fd" stroke-width="2.5" /><line x1="20" y1="14" x2="20" y2="28" stroke="#e056fd" stroke-width="2.5" /><circle cx="20" cy="14" r="4" fill="#e056fd" /></svg></td><td><strong>5a6b7c8</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#e056fd"></span> L2</span></td></tr><tr class="hl"><td class="col-graph"><svg class="graph-svg" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg"><line x1="13" y1="0" x2="13" y2="14" stroke="#4a90e2" stroke-width="2.5" /><path d="M 20 0 C 20 11 13 3 13 14" fill="none" stroke="#e056fd" stroke-width="2.5" stroke-linecap="round" /><circle cx="13" cy="14" r="4" fill="#4a90e2" /></svg></td><td><strong>1a2b3c4</strong></td><td><span class="badge badge-lane"><span class="color-dot" style="background:#4a90e2"></span> L1</span> <span class="badge badge-merge">⊷ Merge</span> <span class="badge badge-orphan">● Root</span></td></tr></tbody></table></div></div>
+
+</div><!-- /panels -->
+
 <div class="nav">
   <button class="nav-btn" id="prevBtn" onclick="switchTab(prev())" disabled>◀ 上一頁 <span class="key-h">←</span></button>
   <button class="nav-btn" id="nextBtn" onclick="switchTab(next())">下一頁 ▶ <span class="key-h">→</span></button>
 </div>
-<div class="summary">
-  <div class="summary-grid" id="summaryGrid"></div>
-</div>
+
 <script>
-let current=0
-const total=16
+// ─── Embedded graph-core.js ──────────────────────────────────
+/**
+ * graph-core.js
+ *
+ * Pure functions for Commit Graph DAG lane routing and SVG rendering.
+ * Extracted from CommitGraph.vue so tests and demo generators share
+ * the same source code.
+ *
+ * Framework-agnostic: works in Node.js, Vue, or browser.
+ */
+
+// ─── Constants ────────────────────────────────────────────────
+const LANE_COLORS = ['#f5a623', '#4a90e2', '#e056fd', '#28a745', '#cb2431', '#00bcd4', '#ff5722', '#9c27b0', '#8bc34a', '#ff9800']
+const LANE_X_BASE = 6
+const LANE_X_STEP = 7
+const ROW_H = 28
+const DOT_Y = 14
+
+class PathHelper {
+  constructor(next, lane) {
+    this.next = next
+    this.lane = lane
+    this.color = LANE_COLORS[lane % LANE_COLORS.length]
+    this.firstRow = -1
+    this.lastRow = -1
+  }
+}
+
+/**
+ * Route lanes for a list of commits (top-to-bottom, newest first).
+ *
+ * @param {Array} data - Array of { id, fullHash, parents: string[] }
+ * @returns {Array} Per-row result: { lane, preMergeLanes, continuingLanes, isBranch, isMerge, mergeLinks }
+ */
+function routeLanes(data) {
+  if (!data || !data.length) return []
+
+  const hashToRow = new Map()
+  data.forEach((c, i) => {
+    if (c.fullHash) hashToRow.set(c.fullHash, i)
+  })
+
+  const paths = []
+  let nextLane = 1
+  const result = []
+
+  for (let i = 0; i < data.length; i++) {
+    const commit = data[i]
+
+    // ── 1. Find "major" path and ending paths ──
+    let majorPath = null
+    const endingPaths = []
+
+    for (let p = 0; p < paths.length; p++) {
+      if (paths[p].next === commit.fullHash) {
+        if (majorPath === null) {
+          majorPath = paths[p]
+        } else {
+          endingPaths.push(paths[p])
+        }
+      }
+    }
+
+    if (majorPath) {
+      majorPath.next = commit.parents[0] || null
+      if (majorPath.firstRow < 0) majorPath.firstRow = i
+      majorPath.lastRow = i
+    } else {
+      const usedLanes = new Set(paths.map(p => p.lane))
+      let lane = 1
+      while (usedLanes.has(lane)) lane++
+      if (lane >= nextLane) nextLane = lane + 1
+      majorPath = new PathHelper(commit.parents[0] || null, lane)
+      majorPath.firstRow = i
+      majorPath.lastRow = i
+      paths.push(majorPath)
+    }
+
+    // ── 2. Handle merge parents (parents[1..n]) ──
+    const mergeParents = commit.parents.slice(1).filter(ph => ph)
+    const mergeLinks = []
+
+    for (const parentHash of mergeParents) {
+      const existingPath = paths.find(p => p.next === parentHash)
+
+      if (existingPath) {
+        mergeLinks.push({ fromLane: existingPath.lane, parentHash })
+      } else {
+        const usedLanes = new Set(paths.map(p => p.lane))
+        let lane = 1
+        while (usedLanes.has(lane)) lane++
+        if (lane >= nextLane) nextLane = lane + 1
+        // 非匹配的 merge parent（如 stash 的 index/untracked）
+        // 設 next=null 讓 path 在下列就被清除，避免空轉線條
+        const newPath = new PathHelper(null, lane)
+        newPath.firstRow = i
+        newPath.lastRow = i
+        paths.push(newPath)
+        mergeLinks.push({ fromLane: lane, parentHash })
+      }
+    }
+
+    // ── 3. Build preMergeLanes (before ending paths removed) ──
+    const preMergeLanes = [...new Set(paths.map(p => p.lane))]
+    if (!preMergeLanes.includes(majorPath.lane)) preMergeLanes.push(majorPath.lane)
+    preMergeLanes.sort((a, b) => a - b)
+
+    // ── 4. Remove ending paths ──
+    for (const ep of endingPaths) {
+      ep.lastRow = i
+      const idx = paths.indexOf(ep)
+      if (idx >= 0) paths.splice(idx, 1)
+    }
+
+    // Keep orphan lanes alive so each orphan/stash gets its own lane and color.
+    // Rules:
+    //   - Last row: always clean up all orphan paths.
+    //   - Current commit has parents AND path is stale (not this row's): clean up.
+    //   - Current commit is also orphan (no parents): keep all paths alive so each
+    //     consecutive stash gets a unique lane.
+    for (let p = paths.length - 1; p >= 0; p--) {
+      if (paths[p].next === null) {
+        if (i === data.length - 1) {
+          // Last row — always clean up all orphan paths
+          paths[p].lastRow = i
+          paths.splice(p, 1)
+        } else if (commit.parents.length > 0 && paths[p].firstRow !== i) {
+          // Current commit has parents AND this is a stale orphan — clean up
+          paths[p].lastRow = i
+          paths.splice(p, 1)
+        }
+        // Otherwise keep the lane alive (current commit is also orphan/stash)
+      }
+    }
+
+    // ── 5. Build continuingLanes ──
+    const continuingLanes = [...new Set(paths.map(p => p.lane))]
+    if (paths.includes(majorPath) && !continuingLanes.includes(majorPath.lane)) {
+      continuingLanes.push(majorPath.lane)
+    }
+    continuingLanes.sort((a, b) => a - b)
+
+    // ── 6. Determine events ──
+    const isBranch = majorPath.firstRow === i && i > 0
+    const isMerge = endingPaths.length > 0
+
+    result.push({
+      id: commit.id,
+      lane: majorPath.lane,
+      preMergeLanes,
+      continuingLanes,
+      isBranch,
+      isMerge,
+      mergeLinks,
+    })
+  }
+
+  return result
+}
+
+// ─── Coordinate helpers ──────────────────────────────────────
+function getLaneX(lane) {
+  return LANE_X_BASE + lane * LANE_X_STEP
+}
+
+function getLaneColor(lane) {
+  return LANE_COLORS[lane % LANE_COLORS.length]
+}
+
+/**
+ * Generate SVG for one commit row.
+ *
+ * @param {Object} commit  - { id, fullHash, parents: string[], ... }
+ * @param {number} index   - Row index (0 = top/newest)
+ * @param {Array}  data    - Full commit array
+ * @param {Array}  routes  - Output of routeLanes(data)
+ * @param {number} [fixedWidth] - Optional fixed SVG width (px). Auto if omitted.
+ * @returns {string} SVG markup
+ */
+function getRowGraph(commit, index, data, routes, fixedWidth) {
+  if (!data || !data.length) return ''
+  if (!routes || index >= routes.length) return ''
+
+  const r = routes[index]
+  const isFirst = index === 0
+  const rowTop = 0
+  const rowBot = ROW_H
+  const nodeY = DOT_Y
+
+  const maxLane = fixedWidth
+    ? Math.max(...routes.flatMap(rr => rr.preMergeLanes), r.lane)
+    : Math.max(...routes.flatMap(rr => rr.preMergeLanes), r.lane)
+
+  const viewW = fixedWidth || Math.max(120, getLaneX(maxLane) + 20)
+
+  let svg = `<svg class="graph-svg" viewBox="0 0 ${viewW} ${ROW_H}" xmlns="http://www.w3.org/2000/svg">`
+
+  const myCx = getLaneX(r.lane)
+
+  // Lanes that end at this row → merge curves replace their top-half vertical
+  const mergingLanes = index > 0
+    ? routes[index - 1].continuingLanes.filter(l =>
+        r.preMergeLanes.includes(l) && !r.continuingLanes.includes(l) && l !== r.lane
+      )
+    : []
+
+  // ── 1. Vertical through-lines ──
+  for (const lane of r.preMergeLanes) {
+    const cx = getLaneX(lane)
+    const color = getLaneColor(lane)
+    const wasActive = index > 0 && routes[index - 1].preMergeLanes.includes(lane)
+    const willBeActive = index < data.length - 1 && routes[index + 1].preMergeLanes.includes(lane)
+    const isMerging = mergingLanes.includes(lane)
+
+    if (wasActive && !isMerging) {
+      svg += `<line x1="${cx}" y1="${rowTop}" x2="${cx}" y2="${nodeY}" stroke="${color}" stroke-width="2.5" />`
+    }
+    if (willBeActive) {
+      svg += `<line x1="${cx}" y1="${nodeY}" x2="${cx}" y2="${rowBot}" stroke="${color}" stroke-width="2.5" />`
+    }
+  }
+
+  // ── 2. Merge curves ──
+  for (const mLane of mergingLanes) {
+    const mCx = getLaneX(mLane)
+    if (mCx < myCx) {
+      // Rightward — right-angle quadratic
+      svg += `<path d="M ${mCx} ${rowTop} Q ${myCx} ${rowTop} ${myCx} ${nodeY}" fill="none" stroke="${getLaneColor(mLane)}" stroke-width="2.5" stroke-linecap="round" />`
+    } else {
+      // Leftward — cubic bezier S-curve
+      const midY = (rowTop + nodeY) / 2
+      svg += `<path d="M ${mCx} ${rowTop} C ${mCx} ${midY + 4} ${myCx} ${midY - 4} ${myCx} ${nodeY}" fill="none" stroke="${getLaneColor(mLane)}" stroke-width="2.5" stroke-linecap="round" />`
+    }
+  }
+
+  // ── 3. Merge parent links (dashed) — 跳過 stash（fork 做法）
+  if (!commit.isStash) {
+  for (const link of (r.mergeLinks || [])) {
+    const linkCx = getLaneX(link.fromLane)
+    if (linkCx !== myCx) {
+      if (linkCx > myCx) {
+        svg += `<path d="M ${myCx} ${nodeY} Q ${linkCx} ${nodeY} ${linkCx} ${nodeY}" fill="none" stroke="${getLaneColor(link.fromLane)}" stroke-width="2.5" stroke-dasharray="4,3" />`
+      } else {
+        svg += `<path d="M ${myCx} ${nodeY} C ${myCx} ${nodeY - 4} ${linkCx} ${nodeY + 4} ${linkCx} ${nodeY}" fill="none" stroke="${getLaneColor(link.fromLane)}" stroke-width="2.5" stroke-dasharray="4,3" />`
+      }
+    }
+  }
+  }
+
+  // ── 4. Commit dot ──
+  const dotCx = getLaneX(r.lane)
+  const dotColor = getLaneColor(r.lane)
+  const isMergeCommit = commit.parents && commit.parents.length > 1 && !commit.isStash
+
+  if (isFirst) {
+    // HEAD: large hollow ring + small solid center
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="6" fill="none" stroke="${dotColor}" stroke-width="2.5" />`
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="3" fill="${dotColor}" />`
+  } else if (isMergeCommit) {
+    // Merge commit: large solid dot with cross
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="5" fill="${dotColor}" />`
+    svg += `<line x1="${dotCx - 4}" y1="${nodeY}" x2="${dotCx + 4}" y2="${nodeY}" stroke="white" stroke-width="1.5" />`
+    svg += `<line x1="${dotCx}" y1="${nodeY - 4}" x2="${dotCx}" y2="${nodeY + 4}" stroke="white" stroke-width="1.5" />`
+  } else {
+    // Normal commit: solid filled circle
+    svg += `<circle cx="${dotCx}" cy="${nodeY}" r="4" fill="${dotColor}" />`
+  }
+
+  svg += `</svg>`
+  return svg
+}
+
+
+// ─── Tab switching ───────────────────────────────────────────
+let current=0;
+const total=17;
 function switchTab(i){
-  if(i<0||i>=total)return;current=i
-  document.querySelectorAll('.tab').forEach((b,n)=>b.classList.toggle('active',n===i))
-  document.querySelectorAll('.panel').forEach((p,n)=>p.classList.toggle('active',n===i))
-  document.getElementById('prevBtn').disabled=i===0
-  document.getElementById('nextBtn').disabled=i===total-1
+  if(i<0||i>=total)return;current=i;
+  document.querySelectorAll('.tab').forEach((b,n)=>b.classList.toggle('active',n===i));
+  document.querySelectorAll('.panel').forEach((p,n)=>p.classList.toggle('active',n===i));
+  document.getElementById('prevBtn').disabled=i===0;
+  document.getElementById('nextBtn').disabled=i===total-1;
 }
 function prev(){return current-1}
 function next(){return current+1}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')switchTab(current-1);if(e.key==='ArrowRight')switchTab(current+1)})
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')switchTab(current-1);if(e.key==='ArrowRight')switchTab(current+1)});
 </script>
 </body>
 </html>

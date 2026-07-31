@@ -70,6 +70,10 @@ function onDismiss(id) {
   background-color: #007acc;
 }
 
+.toast-warning {
+  background-color: #f5a623;
+}
+
 .toast-icon {
   font-size: 14px;
   font-weight: bold;

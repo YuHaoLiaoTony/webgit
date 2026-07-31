@@ -271,7 +271,15 @@ export async function startServer(options = {}) {
       }
 
       const gitAPI = getGitAPI(req);
-      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath, customPrompt);
+
+      // If no prompt was provided, fall back to the prompt saved in git config
+      let prompt = customPrompt;
+      if (!prompt || !prompt.trim()) {
+        const config = await gitAPI.getConfig();
+        prompt = config.aiPrompt || undefined;
+      }
+
+      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath, prompt);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });

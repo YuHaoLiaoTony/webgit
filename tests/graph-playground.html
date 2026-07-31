@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commit Graph Playground</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#333;display:flex;flex-direction:column;height:100vh}
+  
+  .header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+  .header h1{font-size:18px;font-weight:700}
+  .header .sub{font-size:11px;color:#aab;margin-left:auto}
+  
+  .toolbar{background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+  .toolbar .label{font-size:11px;color:#888;font-weight:600;margin-right:4px}
+  .btn{padding:6px 14px;font-size:12px;font-weight:600;border:1px solid #d0d0d0;background:#fff;color:#555;border-radius:6px;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:5px}
+  .btn:hover{background:#f0f4f8;border-color:#4a90e2;color:#2563eb}
+  .btn:disabled{opacity:0.4;cursor:default}
+  .btn-primary{background:#4a90e2;color:#fff;border-color:#4a90e2}
+  .btn-primary:hover{background:#3a7bc8}
+  .btn-danger{background:#cb2431;color:#fff;border-color:#cb2431}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  
+  .branch-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-right:4px;cursor:pointer;border:2px solid transparent}
+  .branch-tag.active{border-color:#333}
+  
+  .main{flex:1;overflow:auto;padding:16px 20px;background:#fafbfc}
+  .graph-table{width:100%;border-collapse:collapse;min-width:500px}
+  .graph-table th{background:#fafafa;border-bottom:1px solid #ddd;font-size:11px;color:#666;text-align:left;padding:4px 8px;font-weight:600;position:sticky;top:0;z-index:5}
+  .graph-table td{padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;font-size:12px;height:28px}
+  .graph-table tr{cursor:pointer;transition:background 0.1s}
+  .graph-table tr:hover{background:#f0f6ff!important}
+  .graph-table tr.selected{background:#e5edf8!important}
+  .graph-table td.col-graph{padding:0!important;text-align:center;vertical-align:middle;line-height:0;width:100px;min-width:80px}
+  .graph-table .graph-svg{width:100%;height:28px;display:block;vertical-align:top}
+  
+  .badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:3px}
+  .badge-head{background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
+  .badge-branch{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
+  .badge-merge{background:#fce4ec;color:#c62828;border:1px solid #ef9a9a}
+  .badge-orphan{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8}
+  .badge-stash{background:#fce4ec;color:#880e4f;border:1px solid #e91e63;font-weight:700}
+  .badge-lane{background:#f5f5f5;color:#555;border:1px solid #ccc}
+  
+  .commit-subject{color:#333}
+  .branch-label{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin-right:4px}
+  
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:#aaa;font-size:14px;gap:8px}
+  .empty-state .icon{font-size:40px}
+  
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 20px;border-radius:8px;font-size:12px;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none}
+  .toast.show{opacity:1}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;display:flex;align-items:center;justify-content:center}
+  .modal{background:#fff;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,0.25);min-width:340px;max-width:420px;overflow:hidden}
+  .modal-header{padding:16px 20px 4px;font-size:14px;font-weight:600}
+  .modal-body{padding:12px 20px 16px}
+  .modal-body label{display:block;font-size:12px;color:#666;margin-bottom:4px}
+  .modal-body input{width:100%;padding:7px 10px;border:1px solid #d0d0d0;border-radius:5px;font-size:13px}
+  .modal-body input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 0 2px rgba(74,144,226,0.15)}
+  .modal-footer{padding:0 20px 16px;display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Commit Graph Playground</h1>
+  <span class="sub">點 commit 選取 · 新增 commit / 分支 / stash</span>
+</div>
+
+<div class="toolbar">
+  <span class="label">Branches:</span>
+  <span id="branchTags"></span>
+  <span style="color:#ccc;margin:0 4px">|</span>
+  <button class="btn btn-primary btn-sm" onclick="addCommit()">+ Commit</button>
+  <button class="btn btn-sm" onclick="showBranchDialog()">🌿 New Branch</button>
+  <button class="btn btn-sm" onclick="showStashDialog()">📦 Stash</button>
+  <button class="btn btn-sm" onclick="showDeleteDialog()" id="delBtn" disabled>✕ Delete</button>
+  <span style="color:#ccc;margin:0 4px">|</span>
+  <button class="btn btn-sm" onclick="resetAll()">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="empty-state" id="emptyState">
+    <div class="icon">📭</div>
+    <div>尚無 commits — 點擊「+ Commit」開始</div>
+  </div>
+  <table class="graph-table" id="graphTable" style="display:none">
+    <thead>
+      <tr>
+        <th class="col-graph">Graph</th>
+        <th>Commit</th>
+        <th>Subject</th>
+        <th style="width:120px">Branch</th>
+        <th style="width:100px">Badges</th>
+      </tr>
+    </thead>
+    <tbody id="graphBody"></tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="branchDialog" style="display:none" onclick="if(event.target===this)hideBranchDialog()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">🌿 New Branch</div>
+    <div class="modal-body">
+      <label>Branch name</label>
+      <input type="text" id="branchNameInput" placeholder="e.g. feature/login" onkeydown="if(event.key==='Enter')confirmBranch()">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="hideBranchDialog()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmBranch()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="stashDialog" style="display:none" onclick="if(event.target===this)hideStashDialog()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">📦 New Stash</div>
+    <div class="modal-body">
+      <label>Stash message</label>
+      <input type="text" id="stashMsgInput" placeholder="WIP: something" onkeydown="if(event.key==='Enter')confirmStash()" style="margin-bottom:8px">
+      <label style="font-size:11px;color:#999">將從選取的 commit 建立 stash</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="hideStashDialog()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmStash()">Stash</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteDialog" style="display:none" onclick="if(event.target===this)hideDeleteDialog()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">✕ Delete Commit</div>
+    <div class="modal-body" id="deleteBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="hideDeleteDialog()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  1. Core graph functions (embedded fallback — 與 graph-core.js 同步)
+// ═══════════════════════════════════════════════════════════════
+
+var LANE_COLORS = ['#f5a623','#4a90e2','#e056fd','#28a745','#cb2431','#00bcd4','#ff5722','#9c27b0','#8bc34a','#ff9800'];
+var LANE_X_BASE = 6, LANE_X_STEP = 7, ROW_H = 28, DOT_Y = 14;
+
+function getLaneX(lane) { return LANE_X_BASE + lane * LANE_X_STEP; }
+function getLaneColor(lane) { return LANE_COLORS[lane % LANE_COLORS.length]; }
+
+function PathHelper(next, lane) {
+  this.next = next;
+  this.lane = lane;
+  this.color = LANE_COLORS[lane % LANE_COLORS.length];
+  this.firstRow = -1;
+  this.lastRow = -1;
+}
+
+function routeLanes(data) {
+  if (!data || !data.length) return [];
+  var paths = [];
+  var nextLane = 1;
+  var result = [];
+  for (var i = 0; i < data.length; i++) {
+    var commit = data[i];
+    var majorPath = null;
+    var endingPaths = [];
+    for (var p = 0; p < paths.length; p++) {
+      if (paths[p].next === commit.fullHash) {
+        if (majorPath === null) majorPath = paths[p];
+        else endingPaths.push(paths[p]);
+      }
+    }
+    if (majorPath) {
+      majorPath.next = commit.parents[0] || null;
+      if (majorPath.firstRow < 0) majorPath.firstRow = i;
+      majorPath.lastRow = i;
+    } else {
+      var usedLanes = paths.map(function(p) { return p.lane; });
+      var lane = 1;
+      while (usedLanes.indexOf(lane) >= 0) lane++;
+      if (lane >= nextLane) nextLane = lane + 1;
+      majorPath = new PathHelper(commit.parents[0] || null, lane);
+      majorPath.firstRow = i;
+      majorPath.lastRow = i;
+      paths.push(majorPath);
+    }
+    var mergeParents = commit.parents.slice(1).filter(function(ph) { return ph; });
+    var mergeLinks = [];
+    for (var mp = 0; mp < mergeParents.length; mp++) {
+      var parentHash = mergeParents[mp];
+      var existingPath = null;
+      for (var ep2 = 0; ep2 < paths.length; ep2++) {
+        if (paths[ep2].next === parentHash) { existingPath = paths[ep2]; break; }
+      }
+      if (existingPath) {
+        mergeLinks.push({ fromLane: existingPath.lane, parentHash: parentHash });
+      } else {
+        var used2 = paths.map(function(p) { return p.lane; });
+        var nl = 1;
+        while (used2.indexOf(nl) >= 0) nl++;
+        if (nl >= nextLane) nextLane = nl + 1;
+        var newPath = new PathHelper(parentHash, nl);
+        newPath.firstRow = i;
+        newPath.lastRow = i;
+        paths.push(newPath);
+        mergeLinks.push({ fromLane: nl, parentHash: parentHash });
+      }
+    }
+    var preMergeLanes = paths.map(function(p) { return p.lane; }).filter(function(v,idx,a){return a.indexOf(v)===idx;});
+    if (preMergeLanes.indexOf(majorPath.lane) < 0) preMergeLanes.push(majorPath.lane);
+    preMergeLanes.sort(function(a,b){return a-b;});
+    for (var epi = 0; epi < endingPaths.length; epi++) {
+      endingPaths[epi].lastRow = i;
+      var eidx = paths.indexOf(endingPaths[epi]);
+      if (eidx >= 0) paths.splice(eidx, 1);
+    }
+    for (var pp = paths.length - 1; pp >= 0; pp--) {
+      if (paths[pp].next === null) {
+        if (i === data.length - 1) {
+          paths[pp].lastRow = i;
+          paths.splice(pp, 1);
+        } else if (commit.parents.length > 0 && paths[pp].firstRow !== i) {
+          paths[pp].lastRow = i;
+          paths.splice(pp, 1);
+        }
+      }
+    }
+    var continuingLanes = paths.map(function(p) { return p.lane; }).filter(function(v,idx,a){return a.indexOf(v)===idx;});
+    if (paths.indexOf(majorPath) >= 0 && continuingLanes.indexOf(majorPath.lane) < 0) {
+      continuingLanes.push(majorPath.lane);
+    }
+    continuingLanes.sort(function(a,b){return a-b;});
+    var isBranch = majorPath.firstRow === i && i > 0;
+    var isMerge = endingPaths.length > 0;
+    result.push({ id: commit.id, lane: majorPath.lane, preMergeLanes: preMergeLanes, continuingLanes: continuingLanes, isBranch: isBranch, isMerge: isMerge, mergeLinks: mergeLinks });
+  }
+  return result;
+}
+
+function getRowGraph(commit, index, data, routes) {
+  if (!data || !data.length) return '';
+  if (!routes || index >= routes.length) return '';
+  var r = routes[index];
+  var isFirst = index === 0;
+  var rowTop = 0, rowBot = ROW_H, nodeY = DOT_Y;
+  var maxLane = 0;
+  for (var ri = 0; ri < routes.length; ri++) {
+    for (var li = 0; li < routes[ri].preMergeLanes.length; li++) {
+      if (routes[ri].preMergeLanes[li] > maxLane) maxLane = routes[ri].preMergeLanes[li];
+    }
+  }
+  if (r.lane > maxLane) maxLane = r.lane;
+  var viewW = Math.max(120, getLaneX(maxLane) + 20);
+  var svg = '<svg class="graph-svg" viewBox="0 0 ' + viewW + ' ' + ROW_H + '" xmlns="http://www.w3.org/2000/svg">';
+  var myCx = getLaneX(r.lane);
+  var mergingLanes = [];
+  if (index > 0) {
+    for (var ml = 0; ml < routes[index - 1].continuingLanes.length; ml++) {
+      var l = routes[index - 1].continuingLanes[ml];
+      if (r.preMergeLanes.indexOf(l) >= 0 && r.continuingLanes.indexOf(l) < 0 && l !== r.lane) {
+        mergingLanes.push(l);
+      }
+    }
+  }
+  for (var vl = 0; vl < r.preMergeLanes.length; vl++) {
+    var lane = r.preMergeLanes[vl];
+    var cx = getLaneX(lane);
+    var color = getLaneColor(lane);
+    var wasActive = index > 0 && routes[index - 1].preMergeLanes.indexOf(lane) >= 0;
+    var willBeActive = index < data.length - 1 && routes[index + 1].preMergeLanes.indexOf(lane) >= 0;
+    var isMerging = mergingLanes.indexOf(lane) >= 0;
+    if (wasActive && !isMerging) {
+      svg += '<line x1="' + cx + '" y1="' + rowTop + '" x2="' + cx + '" y2="' + nodeY + '" stroke="' + color + '" stroke-width="2.5" />';
+    }
+    if (willBeActive) {
+      svg += '<line x1="' + cx + '" y1="' + nodeY + '" x2="' + cx + '" y2="' + rowBot + '" stroke="' + color + '" stroke-width="2.5" />';
+    }
+  }
+  for (var cv = 0; cv < mergingLanes.length; cv++) {
+    var mLane = mergingLanes[cv];
+    var mCx = getLaneX(mLane);
+    if (mCx < myCx) {
+      svg += '<path d="M ' + mCx + ' ' + rowTop + ' Q ' + myCx + ' ' + rowTop + ' ' + myCx + ' ' + nodeY + '" fill="none" stroke="' + getLaneColor(mLane) + '" stroke-width="2.5" stroke-linecap="round" />';
+    } else {
+      var midY = (rowTop + nodeY) / 2;
+      svg += '<path d="M ' + mCx + ' ' + rowTop + ' C ' + mCx + ' ' + (midY + 4) + ' ' + myCx + ' ' + (midY - 4) + ' ' + myCx + ' ' + nodeY + '" fill="none" stroke="' + getLaneColor(mLane) + '" stroke-width="2.5" stroke-linecap="round" />';
+    }
+  }
+  // Fork 做法: stash 不顯示 merge link
+  if (!commit.isStash) {
+  for (var lk = 0; lk < (r.mergeLinks || []).length; lk++) {
+    var link = r.mergeLinks[lk];
+    var linkCx = getLaneX(link.fromLane);
+    if (linkCx !== myCx) {
+      if (linkCx > myCx) {
+        svg += '<path d="M ' + myCx + ' ' + nodeY + ' Q ' + linkCx + ' ' + nodeY + ' ' + linkCx + ' ' + nodeY + '" fill="none" stroke="' + getLaneColor(link.fromLane) + '" stroke-width="2.5" stroke-dasharray="4,3" />';
+      } else {
+        svg += '<path d="M ' + myCx + ' ' + nodeY + ' C ' + myCx + ' ' + (nodeY - 4) + ' ' + linkCx + ' ' + (nodeY + 4) + ' ' + linkCx + ' ' + nodeY + '" fill="none" stroke="' + getLaneColor(link.fromLane) + '" stroke-width="2.5" stroke-dasharray="4,3" />';
+      }
+    }
+  }
+  }
+  var dotCx = getLaneX(r.lane);
+  var dotColor = getLaneColor(r.lane);
+  var isMergeCommit = commit.parents && commit.parents.length > 1 && !commit.isStash;
+  if (isFirst) {
+    svg += '<circle cx="' + dotCx + '" cy="' + nodeY + '" r="6" fill="none" stroke="' + dotColor + '" stroke-width="2.5" />';
+    svg += '<circle cx="' + dotCx + '" cy="' + nodeY + '" r="3" fill="' + dotColor + '" />';
+  } else if (isMergeCommit) {
+    svg += '<circle cx="' + dotCx + '" cy="' + nodeY + '" r="5" fill="' + dotColor + '" />';
+    svg += '<line x1="' + (dotCx - 4) + '" y1="' + nodeY + '" x2="' + (dotCx + 4) + '" y2="' + nodeY + '" stroke="white" stroke-width="1.5" />';
+    svg += '<line x1="' + dotCx + '" y1="' + (nodeY - 4) + '" x2="' + dotCx + '" y2="' + (nodeY + 4) + '" stroke="white" stroke-width="1.5" />';
+  } else {
+    svg += '<circle cx="' + dotCx + '" cy="' + nodeY + '" r="4" fill="' + dotColor + '" />';
+  }
+  svg += '<\/svg>';
+  return svg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  2. Try to replace with real graph-core.js
+// ═══════════════════════════════════════════════════════════════
+
+;(function loadGraphCore() {
+  try {
+    var script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = [
+      'import { routeLanes as rl, getLaneX as gx, getLaneColor as gc, getRowGraph as gr, LANE_COLORS as lc } from "../ui/src/lib/graph-core.js";',
+      'window.routeLanes = rl; window.getLaneX = gx; window.getLaneColor = gc; window.getRowGraph = gr; window.LANE_COLORS = lc;'
+    ].join('\n');
+    document.head.appendChild(script);
+  } catch(e) { /* fallback kept */ }
+})();
+
+// ═══════════════════════════════════════════════════════════════
+//  3. App state & logic
+// ═══════════════════════════════════════════════════════════════
+
+var BRANCH_COLORS = ['#4a90e2','#e056fd','#28a745','#cb2431','#00bcd4','#ff5722','#9c27b0','#f5a623'];
+var commitCounter = 0;
+var selectedId = null;
+var commits = [];
+var branches = {};
+var currentBranch = null;
+var toastTimer = null;
+
+function addCommitObj(branch, parentId, subject, afterId) {
+  commitCounter++;
+  var id = 'c' + commitCounter;
+  var commit = { id: id, fullHash: id, hash: id.substring(0, 6), parents: parentId ? [parentId] : [], subject: subject || ('Commit on ' + branch), branch: branch };
+  if (afterId) {
+    var idx = -1;
+    for (var i = 0; i < commits.length; i++) { if (commits[i].id === afterId) { idx = i; break; } }
+    if (idx >= 0) { commits.splice(idx + 1, 0, commit); }
+    else { commits.unshift(commit); }
+  } else {
+    commits.unshift(commit);
+  }
+  if (branches[branch]) branches[branch].head = id;
+  return id;
+}
+
+function addStashObj(fromId, message) {
+  // Stash 資料跟一般 commit 完全一樣：有 parent，插在 parent 後面
+  // 只差在 isStash=true（用來顯示 📦 stash badge）
+  // Fork 做法: stash 有 3 個 parent: HEAD + index + untracked
+  if (!fromId) return null;
+  commitCounter++;
+  var id = 'stash' + commitCounter;
+  // stash 跟「新分支+commit」資料完全一樣：1 parent，插在 parent 上方
+  var commit = { id: id, fullHash: id, hash: id.substring(0, 6), parents: [fromId], subject: message || 'WIP: stash changes', branch: '', isStash: true };
+  // stash 是新的 commit，跟「+ Commit」一樣往上新增
+  commits.unshift(commit);
+  return id;
+}
+
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2000);
+}
+
+function render() {
+  var routes = routeLanes(commits);
+  var hasCommits = commits.length > 0;
+  document.getElementById('emptyState').style.display = hasCommits ? 'none' : 'flex';
+  document.getElementById('graphTable').style.display = hasCommits ? '' : 'none';
+  document.getElementById('delBtn').disabled = !selectedId;
+  if (!hasCommits) return;
+  
+  var maxLane = 0;
+  for (var ri = 0; ri < routes.length; ri++) {
+    for (var li = 0; li < routes[ri].preMergeLanes.length; li++) {
+      if (routes[ri].preMergeLanes[li] > maxLane) maxLane = routes[ri].preMergeLanes[li];
+    }
+  }
+  var colWidth = Math.max(80, getLaneX(maxLane) + 20);
+  document.querySelector('.graph-table th.col-graph').style.width = colWidth + 'px';
+  
+  // Branch tags
+  var branchNames = Object.keys(branches);
+  var tagHtml = '';
+  for (var b = 0; b < branchNames.length; b++) {
+    var name = branchNames[b];
+    var color = branches[name].color;
+    var active = name === currentBranch ? ' active' : '';
+    tagHtml += '<span class="branch-tag' + active + '" style="border-color:' + (active ? color : 'transparent') + ';background:' + color + '22" onclick="switchBranch(\'' + name + '\')">' +
+      '<span style="color:' + color + '">●</span> ' + name + '</span>';
+  }
+  document.getElementById('branchTags').innerHTML = tagHtml;
+  
+  // Table rows
+  var html = '';
+  for (var i = 0; i < commits.length; i++) {
+    var c = commits[i];
+    var r = routes[i];
+    var svg = getRowGraph(c, i, commits, routes);
+    var badges = ['<span class="badge badge-lane"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + getLaneColor(r.lane) + ';margin-right:2px;vertical-align:middle"></span> L' + r.lane + '</span>'];
+    if (i === 0) badges.push('<span class="badge badge-head">HEAD</span>');
+    if (r.isBranch) badges.push('<span class="badge badge-branch">⊞ Branch</span>');
+    if (c.isStash) {
+      badges.push('<span class="badge badge-stash">📦 stash</span>');
+    } else {
+      if (r.isMerge) badges.push('<span class="badge badge-merge">⊷ Merge</span>');
+    }
+    if (c.parents.length === 0 && !c.isStash) badges.push('<span class="badge badge-orphan">● Root</span>');
+    
+    var branchLabels = '';
+    for (var bn = 0; bn < branchNames.length; bn++) {
+      var bname = branchNames[bn];
+      if (branches[bname].head === c.id) {
+        branchLabels += '<span class="branch-label" style="background:' + branches[bname].color + '22;color:' + branches[bname].color + ';border:1px solid ' + branches[bname].color + '">' + bname + '</span>';
+      }
+    }
+    var srcInfo = c.isStash && c.parents[0] ? ' <span style="color:#e91e63;font-size:11px;font-weight:600">← ' + c.parents[0] + '</span>' : '';
+    var selected = c.id === selectedId ? ' class="selected"' : '';
+    html += '<tr' + selected + ' data-id="' + c.id + '" onclick="selectCommit(\'' + c.id + '\')">' +
+      '<td class="col-graph">' + svg + '</td>' +
+      '<td><strong>' + c.id + '</strong>' + srcInfo + '</td>' +
+      '<td class="commit-subject">' + (c.subject || '') + '</td>' +
+      '<td>' + branchLabels + '</td>' +
+      '<td>' + badges.join(' ') + '</td></tr>';
+  }
+  document.getElementById('graphBody').innerHTML = html;
+}
+
+// ─── UI Actions (global for onclick) ─────────────────────────
+
+function addCommit() {
+  if (!currentBranch) { showToast('❌ No branch selected'); return; }
+  var head = branches[currentBranch].head;
+  var subject = prompt('Commit message:', 'Commit on ' + currentBranch);
+  if (subject === null) return;
+  addCommitObj(currentBranch, head, subject || ('Commit on ' + currentBranch));
+  render();
+  showToast('✅ Commit added on ' + currentBranch);
+}
+
+function showBranchDialog() {
+  if (!selectedId) { showToast('❌ Select a commit first'); return; }
+  document.getElementById('branchNameInput').value = '';
+  document.getElementById('branchDialog').style.display = 'flex';
+  setTimeout(function() { document.getElementById('branchNameInput').focus(); }, 100);
+}
+function hideBranchDialog() { document.getElementById('branchDialog').style.display = 'none'; }
+function confirmBranch() {
+  var name = document.getElementById('branchNameInput').value.trim();
+  if (!name) { showToast('❌ Enter branch name'); return; }
+  if (branches[name]) { showToast('❌ Branch "' + name + '" already exists'); return; }
+  var colorIdx = Object.keys(branches).length % BRANCH_COLORS.length;
+  branches[name] = { head: selectedId, color: BRANCH_COLORS[colorIdx] };
+  currentBranch = name;
+  hideBranchDialog();
+  render();
+  showToast('🌿 Branch "' + name + '" created from ' + selectedId);
+}
+
+function showStashDialog() {
+  if (!selectedId) { showToast('❌ Select a commit first'); return; }
+  document.getElementById('stashMsgInput').value = '';
+  document.getElementById('stashDialog').style.display = 'flex';
+  setTimeout(function() { document.getElementById('stashMsgInput').focus(); }, 100);
+}
+function hideStashDialog() { document.getElementById('stashDialog').style.display = 'none'; }
+function confirmStash() {
+  var msg = document.getElementById('stashMsgInput').value.trim() || 'WIP: stash changes';
+  addStashObj(selectedId, msg);
+  hideStashDialog();
+  render();
+  showToast('📦 Stash created from ' + selectedId);
+}
+
+function showDeleteDialog() {
+  if (!selectedId) return;
+  var c = null;
+  for (var i = 0; i < commits.length; i++) { if (commits[i].id === selectedId) { c = commits[i]; break; } }
+  if (!c) return;
+  document.getElementById('deleteBody').innerHTML = 'Delete <strong>' + c.id + '</strong> (' + (c.subject || '') + ')?';
+  document.getElementById('deleteDialog').style.display = 'flex';
+}
+function hideDeleteDialog() { document.getElementById('deleteDialog').style.display = 'none'; }
+function confirmDelete() {
+  for (var i = 0; i < commits.length; i++) { if (commits[i].id === selectedId) { commits.splice(i, 1); break; } }
+  selectedId = null;
+  hideDeleteDialog();
+  render();
+  showToast('✕ Commit deleted');
+}
+
+function switchBranch(name) { currentBranch = name; render(); }
+function selectCommit(id) { selectedId = id; render(); }
+
+function resetAll() {
+  commits = [];
+  branches = {};
+  selectedId = null;
+  commitCounter = 0;
+  var rootId = addCommitObj('main', null, 'Initial commit');
+  branches['main'] = { head: rootId, color: BRANCH_COLORS[0] };
+  currentBranch = 'main';
+  render();
+  showToast('↺ Reset to default');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  4. Init
+// ═══════════════════════════════════════════════════════════════
+var rootId = addCommitObj('main', null, 'Initial commit');
+branches['main'] = { head: rootId, color: BRANCH_COLORS[0] };
+currentBranch = 'main';
+render();
+</script>
+</body>
+</html>

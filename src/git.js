@@ -611,11 +611,13 @@ export function createGitAPI(repoPath) {
       const userName = config.all['user.name'] || '';
       const userEmail = config.all['user.email'] || '';
       const defaultBranch = config.all['init.defaultbranch'] || 'main';
+      const aiPrompt = config.all['webgit.aiprompt'] || '';
 
       return {
         userName,
         userEmail,
-        defaultBranch
+        defaultBranch,
+        aiPrompt
       };
     },
 
@@ -722,15 +724,29 @@ export function createGitAPI(repoPath) {
       const allowedKeys = [
         'user.name',
         'user.email',
-        'init.defaultbranch'
+        'init.defaultbranch',
+        'webgit.aiprompt'
       ];
 
       if (!allowedKeys.includes(key)) {
         throw new Error(`Configuration key '${key}' is not allowed. Allowed keys: ${allowedKeys.join(', ')}`);
       }
 
-      // Validate value is a non-empty string
-      if (typeof value !== 'string' || value.trim().length === 0) {
+      // Validate value is a string
+      if (typeof value !== 'string') {
+        throw new Error('Configuration value must be a string');
+      }
+
+      // Empty value for the AI prompt → clear the saved prompt
+      if (value.trim().length === 0) {
+        if (key === 'webgit.aiprompt') {
+          try {
+            await git.raw(['config', '--unset', key]);
+          } catch (_) {
+            // Key was not set — that's fine
+          }
+          return { success: true };
+        }
         throw new Error('Configuration value must be a non-empty string');
       }
 
