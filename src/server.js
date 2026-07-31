@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
-import { dirname, join, basename } from 'path';
+import { dirname, join, basename, resolve, isAbsolute } from 'path';
+import { readdir, access } from 'fs/promises';
+import { homedir } from 'os';
 import { createRepoManager } from './repoManager.js';
 import { generateCommitMessage } from './ai.js';
 import simpleGit from 'simple-git';
@@ -480,6 +482,66 @@ export async function startServer(options = {}) {
     }
   });
 
+  // GET /api/browse — list subdirectories for the folder picker
+  // ?path=/home/user — defaults to the user's home directory
+  app.get('/api/browse', async (req, res) => {
+    try {
+      const queryPath = Array.isArray(req.query.path) ? req.query.path[0] : req.query.path;
+      const target = queryPath && queryPath.trim() ? resolve(queryPath) : homedir();
+
+      if (queryPath && !isAbsolute(queryPath)) {
+        return res.status(400).json({ error: 'Path must be absolute' });
+      }
+
+      if (!isAbsolute(target)) {
+        return res.status(400).json({ error: 'Path must be absolute' });
+      }
+
+      const entries = await readdir(target, { withFileTypes: true });
+
+      const parent = dirname(target);
+      const canGoUp = parent !== target;
+
+      // On Windows, at the root of a drive, offer the drive list
+      let drives = null;
+      if (process.platform === 'win32' && !canGoUp) {
+        drives = await listWindowsDrives();
+      }
+
+      // Gather subdirectories, flagging git repositories (has a .git entry)
+      const dirEntries = entries.filter((e) => e.isDirectory());
+      const dirs = await Promise.all(
+        dirEntries.map(async (entry) => {
+          const fullPath = resolve(target, entry.name);
+          const isRepo = await isGitRepoDir(fullPath);
+          return { name: entry.name, path: fullPath, isRepo };
+        })
+      );
+
+      // Git repos first, then alphabetical (case-insensitive)
+      dirs.sort((a, b) => {
+        if (a.isRepo !== b.isRepo) return a.isRepo ? -1 : 1;
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      });
+
+      res.json({
+        currentPath: target,
+        parentPath: canGoUp ? parent : null,
+        homePath: homedir(),
+        drives,
+        dirs,
+      });
+    } catch (error) {
+      if (error.code === 'EACCES' || error.code === 'EPERM') {
+        return res.status(403).json({ error: 'Permission denied' });
+      }
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+        return res.status(404).json({ error: 'Directory not found' });
+      }
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   // SPA fallback - serve index.html for any unmatched route (so browser refresh works on any path)
   app.get('*', (req, res) => {
     res.sendFile(join(__dirname, '../public/index.html'));
@@ -505,6 +567,35 @@ export async function startServer(options = {}) {
   });
 
   return server;
+}
+
+/**
+ * Check whether a directory is a git repository (has a .git entry).
+ */
+async function isGitRepoDir(dirPath) {
+  try {
+    await access(join(dirPath, '.git'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * List available drive letters on Windows (used when browsing at drive root).
+ */
+async function listWindowsDrives() {
+  const drives = [];
+  for (let i = 65; i <= 90; i++) { // A-Z
+    const letter = String.fromCharCode(i);
+    try {
+      await access(`${letter}:\\`);
+      drives.push({ name: `${letter}:`, path: `${letter}:\\`, isRepo: false });
+    } catch {
+      // drive not available
+    }
+  }
+  return drives;
 }
 
 // Allow direct execution for backward compatibility

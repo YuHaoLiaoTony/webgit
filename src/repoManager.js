@@ -1,5 +1,5 @@
 import simpleGit from 'simple-git';
-import { basename } from 'path';
+import { basename, resolve, isAbsolute } from 'path';
 import { createGitAPI } from './git.js';
 
 /**
@@ -33,14 +33,15 @@ export function createRepoManager(options = {}) {
         throw new Error('Path must be a non-empty string');
       }
 
-      // Prevent path traversal
-      if (path.includes('..')) {
-        throw new Error('Path traversal is not allowed');
+      // Normalize to an absolute canonical path
+      const resolvedPath = resolve(path);
+      if (!isAbsolute(resolvedPath)) {
+        throw new Error('Path must be absolute');
       }
 
       // Check if already opened — deduplicate by resolved path
       for (const [id, repo] of repos) {
-        if (repo.path === path) {
+        if (repo.path === resolvedPath) {
           // Refresh current branch
           try {
             const branches = await repo.api.getBranches();
@@ -53,15 +54,15 @@ export function createRepoManager(options = {}) {
       }
 
       // Validate it's a git repo
-      const git = simpleGit(path);
+      const git = simpleGit(resolvedPath);
       const isRepo = await git.checkIsRepo();
       if (!isRepo) {
-        throw new Error(`Not a valid git repository: ${path}`);
+        throw new Error(`Not a valid git repository: ${resolvedPath}`);
       }
 
-      const name = basename(path);
+      const name = basename(resolvedPath);
       const id = String(nextId++);
-      const api = createGitAPI(path);
+      const api = createGitAPI(resolvedPath);
 
       let currentBranch = 'unknown';
       try {
@@ -71,7 +72,7 @@ export function createRepoManager(options = {}) {
         // repository may have no commits yet
       }
 
-      repos.set(id, { api, git, path, name, currentBranch });
+      repos.set(id, { api, git, path: resolvedPath, name, currentBranch });
 
       if (defaultId === null) {
         defaultId = id;

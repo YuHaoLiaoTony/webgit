@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useReposStore } from '../stores/repos.js'
+import FolderPickerDialog from './FolderPickerDialog.vue'
 
 const reposStore = useReposStore()
 
@@ -15,6 +16,26 @@ const cloneUrl = ref('')
 const cloneDir = ref('')
 const dialogError = ref('')
 const dialogLoading = ref(false)
+
+// Folder picker state (shared by Open + Clone dialogs)
+const showPicker = ref(false)
+const pickerTarget = ref('open') // 'open' | 'clone'
+const pickerInitial = ref('')
+
+function openPicker(target) {
+  pickerTarget.value = target
+  pickerInitial.value = target === 'open' ? openPath.value : cloneDir.value
+  showPicker.value = true
+}
+
+function onPickerSelect(path) {
+  if (pickerTarget.value === 'open') {
+    openPath.value = path
+  } else {
+    cloneDir.value = path
+  }
+  showPicker.value = false
+}
 
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
@@ -123,13 +144,18 @@ async function handleRemoveRepo(id, event) {
         </div>
         <div class="repo-dialog-body">
           <label class="repo-dialog-label">Repository Path</label>
-          <input
-            v-model="openPath"
-            class="repo-dialog-input"
-            type="text"
-            placeholder="/path/to/repository"
-            @keydown.enter="handleOpenRepo"
-          />
+          <div class="repo-path-row">
+            <input
+              v-model="openPath"
+              class="repo-dialog-input"
+              type="text"
+              placeholder="/path/to/repository"
+              @keydown.enter="handleOpenRepo"
+            />
+            <button class="repo-browse-btn" type="button" @click="openPicker('open')">
+              📂 Browse…
+            </button>
+          </div>
           <div v-if="dialogError" class="repo-dialog-error">{{ dialogError }}</div>
         </div>
         <div class="repo-dialog-footer">
@@ -164,13 +190,18 @@ async function handleRemoveRepo(id, event) {
             @keydown.enter="handleCloneRepo"
           />
           <label class="repo-dialog-label" style="margin-top: 12px;">Destination Directory</label>
-          <input
-            v-model="cloneDir"
-            class="repo-dialog-input"
-            type="text"
-            placeholder="/path/to/destination"
-            @keydown.enter="handleCloneRepo"
-          />
+          <div class="repo-path-row">
+            <input
+              v-model="cloneDir"
+              class="repo-dialog-input"
+              type="text"
+              placeholder="/path/to/destination"
+              @keydown.enter="handleCloneRepo"
+            />
+            <button class="repo-browse-btn" type="button" @click="openPicker('clone')">
+              📂 Browse…
+            </button>
+          </div>
           <div v-if="dialogError" class="repo-dialog-error">{{ dialogError }}</div>
         </div>
         <div class="repo-dialog-footer">
@@ -186,6 +217,14 @@ async function handleRemoveRepo(id, event) {
       </div>
     </div>
   </Teleport>
+
+  <!-- Folder Picker (shared by Open + Clone dialogs) -->
+  <FolderPickerDialog
+    :show="showPicker"
+    :initial-path="pickerInitial"
+    @close="showPicker = false"
+    @select="onPickerSelect"
+  />
 </template>
 
 <style scoped>
@@ -339,6 +378,33 @@ async function handleRemoveRepo(id, event) {
 .repo-dialog-input:focus {
   border-color: #007acc;
   box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+/* ── Path input + Browse button row ───────────────────────────────── */
+.repo-path-row {
+  display: flex;
+  gap: 6px;
+}
+
+.repo-path-row .repo-dialog-input {
+  flex: 1;
+}
+
+.repo-browse-btn {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.repo-browse-btn:hover {
+  background: #f0f6fc;
+  border-color: #b3d4f7;
 }
 
 .repo-dialog-error {
