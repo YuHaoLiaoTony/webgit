@@ -160,9 +160,9 @@ async function savePrompt() {
   aiPromptSaving.value = true
   try {
     await post('/config', { key: 'webgit.aiprompt', value: customPrompt.value.trim() })
-    toast.showToast(customPrompt.value.trim() ? '提示詞已保存到 git config' : '提示詞已清除', 'success')
+    toast.showToast('success', customPrompt.value.trim() ? '提示詞已保存到 git config' : '提示詞已清除')
   } catch (e) {
-    toast.showToast(`保存失敗：${e.message}`, 'error')
+    toast.showToast('error', `保存失敗：${e.message}`)
   } finally {
     aiPromptSaving.value = false
   }
@@ -173,7 +173,7 @@ async function generateAIMessage() {
   const toast = useToast()
 
   if (stagedFiles.value.length === 0) {
-    toast.showToast('No files staged', 'warning')
+    toast.showToast('warning', 'No files staged')
     return
   }
 
@@ -186,10 +186,10 @@ async function generateAIMessage() {
     })
     commitTitle.value = result.title
     commitBody.value = result.body
-    toast.showToast('Commit message generated', 'success')
+    toast.showToast('success', 'Commit message generated')
   } catch (e) {
     inlineCommitError.value = e.message
-    toast.showToast('AI generation failed', 'error')
+    toast.showToast('error', 'AI generation failed')
   } finally {
     aiGenerating.value = false
   }
