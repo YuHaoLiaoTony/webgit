@@ -5,6 +5,7 @@ import TabsBar from './components/TabsBar.vue'
 import ChangesView from './components/ChangesView.vue'
 import CommitGraph from './components/CommitGraph.vue'
 import DetailsPanel from './components/DetailsPanel.vue'
+import RepoManager from './components/RepoManager.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import PushDialog from './components/PushDialog.vue'
 import PullDialog from './components/PullDialog.vue'
@@ -19,6 +20,26 @@ import { showToast } from './composables/useToast.js'
 const uiStore = useUiStore()
 const reposStore = useReposStore()
 const statusStore = useStatusStore()
+
+// --- Repository menu (title bar) ---
+const showRepoMenu = ref(false)
+
+function toggleRepoMenu() {
+  showRepoMenu.value = !showRepoMenu.value
+}
+
+function openRepoManager() {
+  // 記住進入前的視圖（已在 repos 視圖時則保留原本的 prevView）
+  if (uiStore.currentView !== 'repos') {
+    uiStore.prevView = uiStore.currentView
+  }
+  uiStore.currentView = 'repos'
+  showRepoMenu.value = false
+}
+
+function onDocClick() {
+  showRepoMenu.value = false
+}
 
 // --- Resizer: Vertical (sidebar width) ---
 const sidebarRef = ref(null)
@@ -173,6 +194,7 @@ function onMouseUp() {
 onMounted(() => {
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('mouseup', onMouseUp)
+  document.addEventListener('click', onDocClick)
   reposStore.fetchRepos()
 })
 
@@ -187,6 +209,7 @@ watch(() => reposStore.activeRepoId, () => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('mouseup', onMouseUp)
+  document.removeEventListener('click', onDocClick)
 })
 </script>
 
@@ -196,7 +219,12 @@ onUnmounted(() => {
     <div class="menu-items">
       <span class="menu-item">File</span>
       <span class="menu-item">View</span>
-      <span class="menu-item">Repository</span>
+      <div class="menu-dropdown-wrap" @click.stop="toggleRepoMenu">
+        <span class="menu-item" :class="{ 'menu-item-active': showRepoMenu }">Repository</span>
+        <div v-if="showRepoMenu" class="menu-dropdown">
+          <div class="menu-dropdown-item" @click="openRepoManager">💼 Manage Repo…</div>
+        </div>
+      </div>
       <span class="menu-item">Window</span>
       <span class="menu-item">Help</span>
     </div>
@@ -240,7 +268,7 @@ onUnmounted(() => {
     </div>
     <div class="toolbar-divider"></div>
     <div style="flex: 1; text-align: center;">
-      <div style="font-weight: bold; font-size: 13px;">{{ reposStore.activeRepo?.name || '' }}</div>
+      <div style="font-weight: bold; font-size: 13px;">{{ reposStore.displayName(reposStore.activeRepo) }}</div>
       <div style="font-size: 10px; color: #666;">🌿 {{ statusStore.current || '' }}</div>
     </div>
     <div class="toolbar-divider"></div>
@@ -289,6 +317,7 @@ onUnmounted(() => {
       <!-- Content Area: Conditional Views -->
       <div class="commit-list-container">
         <ChangesView v-if="uiStore.currentView === 'changes'" />
+        <RepoManager v-else-if="uiStore.currentView === 'repos'" />
         <CommitGraph v-else-if="uiStore.currentView === 'commits'" ref="commitGraphRef" />
         <div v-else style="display: flex; align-items: center; justify-content: center; height: 100%; color: #aaa; font-size: 14px; font-style: italic; user-select: none;">
           Content Area — Coming Soon
@@ -296,7 +325,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Horizontal Splitter Bar for Details Panel -->
-      <div v-if="uiStore.currentView !== 'changes'"
+      <div v-if="uiStore.currentView !== 'changes' && uiStore.currentView !== 'repos'"
         class="resizer-h"
         ref="resizerHRef"
         id="resizerH"
@@ -304,7 +333,7 @@ onUnmounted(() => {
       ></div>
 
       <!-- Lower: Details Panel -->
-      <div v-if="uiStore.currentView !== 'changes'" class="details-panel" ref="detailsPanelRef" id="detailsPanel">
+      <div v-if="uiStore.currentView !== 'changes' && uiStore.currentView !== 'repos'" class="details-panel" ref="detailsPanelRef" id="detailsPanel">
         <DetailsPanel
           :selectedCommit="selectedCommit"
           @navigate-to-commit="handleNavigateToCommit"

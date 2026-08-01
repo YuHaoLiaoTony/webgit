@@ -140,7 +140,7 @@ watch(() => reposStore.activeRepoId, () => {
 
 <template>
   <div class="sidebar-header">
-    <span>{{ reposStore.activeRepo?.name || 'Repository' }}</span>
+    <span>{{ reposStore.displayName(reposStore.activeRepo) || 'Repository' }}</span>
     <span style="font-size: 10px; cursor: pointer;">⚙</span>
   </div>
 

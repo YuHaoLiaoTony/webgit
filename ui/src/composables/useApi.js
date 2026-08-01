@@ -40,7 +40,7 @@ export function useApi() {
   return {
     async get(url) {
       const effectiveUrl = repoId
-        ? `${url}${url.includes('?') ? '&' : '?'}repoId=${repoId}`
+        ? `${url}${url.includes('?') ? '&' : '?'}repoId=${encodeURIComponent(repoId)}`
         : url
       const response = await fetch(`/api${effectiveUrl}`)
       if (!response.ok) {
@@ -71,7 +71,7 @@ export function useApi() {
     async del(url) {
       // DELETE requests don't need CSRF (repo management endpoints)
       const effectiveUrl = repoId
-        ? `${url}${url.includes('?') ? '&' : '?'}repoId=${repoId}`
+        ? `${url}${url.includes('?') ? '&' : '?'}repoId=${encodeURIComponent(repoId)}`
         : url
       const response = await fetch(`/api${effectiveUrl}`, { method: 'DELETE' })
       if (!response.ok) {

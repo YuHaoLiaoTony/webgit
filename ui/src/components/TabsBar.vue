@@ -1,41 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useReposStore } from '../stores/repos.js'
-import FolderPickerDialog from './FolderPickerDialog.vue'
+import RepoDialogs from './RepoDialogs.vue'
 
 const reposStore = useReposStore()
+const repoDialogs = ref(null)
 
 // Dropdown state
 const showDropdown = ref(false)
-
-// Dialog state
-const showOpenDialog = ref(false)
-const showCloneDialog = ref(false)
-const openPath = ref('')
-const cloneUrl = ref('')
-const cloneDir = ref('')
-const dialogError = ref('')
-const dialogLoading = ref(false)
-
-// Folder picker state (shared by Open + Clone dialogs)
-const showPicker = ref(false)
-const pickerTarget = ref('open') // 'open' | 'clone'
-const pickerInitial = ref('')
-
-function openPicker(target) {
-  pickerTarget.value = target
-  pickerInitial.value = target === 'open' ? openPath.value : cloneDir.value
-  showPicker.value = true
-}
-
-function onPickerSelect(path) {
-  if (pickerTarget.value === 'open') {
-    openPath.value = path
-  } else {
-    cloneDir.value = path
-  }
-  showPicker.value = false
-}
 
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
@@ -47,51 +19,18 @@ function closeDropdown() {
 
 function openOpenDialog() {
   showDropdown.value = false
-  openPath.value = ''
-  dialogError.value = ''
-  showOpenDialog.value = true
+  repoDialogs.value?.openOpenDialog()
 }
 
 function openCloneDialog() {
   showDropdown.value = false
-  cloneUrl.value = ''
-  cloneDir.value = ''
-  dialogError.value = ''
-  showCloneDialog.value = true
-}
-
-async function handleOpenRepo() {
-  if (!openPath.value.trim()) return
-  dialogLoading.value = true
-  dialogError.value = ''
-  try {
-    await reposStore.openRepo(openPath.value.trim())
-    showOpenDialog.value = false
-  } catch (e) {
-    dialogError.value = e.message
-  } finally {
-    dialogLoading.value = false
-  }
-}
-
-async function handleCloneRepo() {
-  if (!cloneUrl.value.trim() || !cloneDir.value.trim()) return
-  dialogLoading.value = true
-  dialogError.value = ''
-  try {
-    await reposStore.cloneRepo(cloneUrl.value.trim(), cloneDir.value.trim())
-    showCloneDialog.value = false
-  } catch (e) {
-    dialogError.value = e.message
-  } finally {
-    dialogLoading.value = false
-  }
+  repoDialogs.value?.openCloneDialog()
 }
 
 async function handleRemoveRepo(id, event) {
   event.stopPropagation()
   try {
-    await reposStore.removeRepo(id)
+    await reposStore.closeRepo(id)
   } catch (e) {
     // Error is logged by the store
   }
@@ -107,7 +46,7 @@ async function handleRemoveRepo(id, event) {
       :class="{ active: repo.id === reposStore.activeRepoId }"
       @click="reposStore.setActiveRepo(repo.id)"
     >
-      <span>{{ repo.name }}{{ repo.isDirty ? '*' : '' }}</span>
+      <span>{{ reposStore.displayName(repo) }}{{ repo.isDirty ? '*' : '' }}</span>
       <span
         class="tab-close"
         @click="handleRemoveRepo(repo.id, $event)"
@@ -134,97 +73,8 @@ async function handleRemoveRepo(id, event) {
     </div>
   </div>
 
-  <!-- Open Repository Dialog -->
-  <Teleport to="body">
-    <div v-if="showOpenDialog" class="repo-overlay" @click.self="showOpenDialog = false">
-      <div class="repo-dialog">
-        <div class="repo-dialog-header">
-          <span>Open Repository</span>
-          <span class="repo-dialog-close" @click="showOpenDialog = false">×</span>
-        </div>
-        <div class="repo-dialog-body">
-          <label class="repo-dialog-label">Repository Path</label>
-          <div class="repo-path-row">
-            <input
-              v-model="openPath"
-              class="repo-dialog-input"
-              type="text"
-              placeholder="/path/to/repository"
-              @keydown.enter="handleOpenRepo"
-            />
-            <button class="repo-browse-btn" type="button" @click="openPicker('open')">
-              📂 Browse…
-            </button>
-          </div>
-          <div v-if="dialogError" class="repo-dialog-error">{{ dialogError }}</div>
-        </div>
-        <div class="repo-dialog-footer">
-          <button class="changes-view-btn" @click="showOpenDialog = false">Cancel</button>
-          <button
-            class="changes-view-btn primary"
-            :disabled="dialogLoading || !openPath.trim()"
-            @click="handleOpenRepo"
-          >
-            {{ dialogLoading ? 'Opening…' : 'Open' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
-
-  <!-- Clone Repository Dialog -->
-  <Teleport to="body">
-    <div v-if="showCloneDialog" class="repo-overlay" @click.self="showCloneDialog = false">
-      <div class="repo-dialog">
-        <div class="repo-dialog-header">
-          <span>Clone Repository</span>
-          <span class="repo-dialog-close" @click="showCloneDialog = false">×</span>
-        </div>
-        <div class="repo-dialog-body">
-          <label class="repo-dialog-label">Remote URL</label>
-          <input
-            v-model="cloneUrl"
-            class="repo-dialog-input"
-            type="text"
-            placeholder="https://github.com/user/repo.git"
-            @keydown.enter="handleCloneRepo"
-          />
-          <label class="repo-dialog-label" style="margin-top: 12px;">Destination Directory</label>
-          <div class="repo-path-row">
-            <input
-              v-model="cloneDir"
-              class="repo-dialog-input"
-              type="text"
-              placeholder="/path/to/destination"
-              @keydown.enter="handleCloneRepo"
-            />
-            <button class="repo-browse-btn" type="button" @click="openPicker('clone')">
-              📂 Browse…
-            </button>
-          </div>
-          <div v-if="dialogError" class="repo-dialog-error">{{ dialogError }}</div>
-        </div>
-        <div class="repo-dialog-footer">
-          <button class="changes-view-btn" @click="showCloneDialog = false">Cancel</button>
-          <button
-            class="changes-view-btn primary"
-            :disabled="dialogLoading || !cloneUrl.trim() || !cloneDir.trim()"
-            @click="handleCloneRepo"
-          >
-            {{ dialogLoading ? 'Cloning…' : 'Clone' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
-
-  <!-- Folder Picker (shared by Open + Clone dialogs) -->
-  <FolderPickerDialog
-    :show="showPicker"
-    :initial-path="pickerInitial"
-    @close="showPicker = false"
-    @select="onPickerSelect"
-  />
+  <!-- Shared Open / Clone dialogs -->
+  <RepoDialogs ref="repoDialogs" />
 </template>
 
 <style scoped>
@@ -302,128 +152,5 @@ async function handleRemoveRepo(id, event) {
 
 .tabs-dropdown-item:last-child {
   border-radius: 0 0 4px 4px;
-}
-
-/* ── Dialog overlay ────────────────────────────────────────────────── */
-.repo-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.repo-dialog {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  width: 460px;
-  max-width: 90vw;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.repo-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  font-weight: bold;
-  font-size: 13px;
-  color: #333;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.repo-dialog-close {
-  font-size: 18px;
-  color: #999;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.repo-dialog-close:hover {
-  color: #333;
-}
-
-.repo-dialog-body {
-  padding: 14px 16px;
-  overflow-y: auto;
-}
-
-.repo-dialog-label {
-  display: block;
-  font-size: 11px;
-  font-weight: bold;
-  color: #666;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.repo-dialog-input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: inherit;
-  line-height: 1.4;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.repo-dialog-input:focus {
-  border-color: #007acc;
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
-}
-
-/* ── Path input + Browse button row ───────────────────────────────── */
-.repo-path-row {
-  display: flex;
-  gap: 6px;
-}
-
-.repo-path-row .repo-dialog-input {
-  flex: 1;
-}
-
-.repo-browse-btn {
-  flex-shrink: 0;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 12px;
-  color: #333;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.repo-browse-btn:hover {
-  background: #f0f6fc;
-  border-color: #b3d4f7;
-}
-
-.repo-dialog-error {
-  margin-top: 8px;
-  padding: 6px 10px;
-  background-color: #fff0f0;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-  color: #cb2431;
-  font-size: 11px;
-}
-
-.repo-dialog-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 10px 16px;
-  border-top: 1px solid #e8e8e8;
-  background-color: #fafafa;
 }
 </style>

@@ -118,8 +118,9 @@ export async function startServer(options = {}) {
   }
 
   // Create repository manager (supports multiple repos)
+  // 啟動時從 ~/.webgit/repos.json 還原 repo 清單與上次選中的 repo
   const repoManager = createRepoManager();
-  const defaultRepo = await repoManager.openRepo(repoPath);
+  await repoManager.init({ ensureRepoPath: repoPath });
 
   // Helper: resolve the git API from request's repoId query/body
   function getGitAPI(req) {
@@ -418,11 +419,35 @@ export async function startServer(options = {}) {
 
   // ── Repository management routes (no CSRF needed) ──────────────────────
 
-  // GET /api/repos — list all open repos
+  // GET /api/repos — list all open repos + last active repo
   app.get('/api/repos', async (req, res) => {
     try {
       const repos = await repoManager.getAllRepos();
-      res.json(repos);
+      res.json({ repos, activeRepo: repoManager.getActiveRepoId() });
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // GET /api/repos/all — list ALL repos (including closed ones) from repos.json
+  app.get('/api/repos/all', async (req, res) => {
+    try {
+      const repos = await repoManager.getAllPersistedRepos();
+      res.json({ repos });
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // POST /api/repos/active — remember the currently selected repo
+  app.post('/api/repos/active', async (req, res) => {
+    try {
+      const { repoId } = req.body;
+      if (!repoId) {
+        return res.status(400).json({ error: 'repoId is required' });
+      }
+      await repoManager.setActiveRepo(repoId);
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
     }
@@ -431,11 +456,11 @@ export async function startServer(options = {}) {
   // POST /api/repos/open — open an existing git repo
   app.post('/api/repos/open', async (req, res) => {
     try {
-      const { path } = req.body;
+      const { path, label } = req.body;
       if (!path) {
         return res.status(400).json({ error: 'Path is required' });
       }
-      const result = await repoManager.openRepo(path);
+      const result = await repoManager.openRepo(path, { label });
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
@@ -472,10 +497,23 @@ export async function startServer(options = {}) {
     }
   });
 
-  // DELETE /api/repos/:id — close/remove a repo
+  // PATCH /api/repos/:id — set/clear the custom label (empty = clear)
+  app.patch('/api/repos/:id', async (req, res) => {
+    try {
+      const { label } = req.body;
+      const result = await repoManager.setLabel(req.params.id, label);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // DELETE /api/repos/:id — close a repo (kept in repos.json, removed from tabs)
+  // ?purge=true — also remove the repo entry from repos.json entirely
   app.delete('/api/repos/:id', async (req, res) => {
     try {
-      repoManager.removeRepo(req.params.id);
+      const purge = req.query.purge === 'true' || req.query.purge === '1';
+      await repoManager.closeRepo(req.params.id, { purge });
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });

@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(true)
   const currentView = ref('commits')
+  const prevView = ref('commits')   // 進入 Repo Manager 前的視圖，切換 repo 後回到這裡
   const theme = ref(localStorage.getItem('theme') || 'light')
   const commitRefreshKey = ref(0)
 
@@ -29,6 +30,7 @@ export const useUiStore = defineStore('ui', () => {
   return {
     sidebarOpen,
     currentView,
+    prevView,
     theme,
     isDark,
     commitRefreshKey,
