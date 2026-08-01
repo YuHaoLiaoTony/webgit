@@ -5,6 +5,7 @@ import { dirname, join, basename, resolve, isAbsolute } from 'path';
 import { readdir, access } from 'fs/promises';
 import { homedir } from 'os';
 import { createRepoManager } from './repoManager.js';
+import { loadSettings, saveSettings } from './settingsStore.js';
 import { generateCommitMessage } from './ai.js';
 import simpleGit from 'simple-git';
 import { randomBytes } from 'crypto';
@@ -458,6 +459,40 @@ export async function startServer(options = {}) {
       const { key, value } = req.body;
       const result = await gitAPI.setConfig(key, value);
       res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // ── Settings routes ─────────────────────────────────────────────────────
+
+  // GET /api/settings/source-code-folders — 回傳 Source Code Folder 清單（第一筆 = Open Repo 預設資料夾）
+  app.get('/api/settings/source-code-folders', async (req, res) => {
+    try {
+      const settings = await loadSettings();
+      res.json({ folders: settings.sourceCodeFolders });
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // POST /api/settings/source-code-folders — 整包儲存 Source Code Folder 清單（順序即意義）
+  app.post('/api/settings/source-code-folders', csrfProtection, async (req, res) => {
+    try {
+      const { folders } = req.body || {};
+      if (!Array.isArray(folders)) {
+        return res.status(400).json({ error: 'folders must be an array' });
+      }
+      // 正規化：僅保留非空字串、解析為絕對路徑、去重（保留順序）
+      const cleaned = [...new Set(
+        folders
+          .filter((f) => typeof f === 'string' && f.trim().length > 0)
+          .map((f) => resolve(f.trim()))
+      )];
+      const settings = await loadSettings();
+      settings.sourceCodeFolders = cleaned;
+      await saveSettings(settings);
+      res.json({ folders: cleaned });
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
     }

@@ -8,13 +8,12 @@
       "description": "Build Vue UI with Vite and deploy to public/",
       "command": "bash scripts/deploy.sh"
     },
-
     {
-      "id": "dev.server",
-      "title": "Start Dev Server",
-      "group": "Development",
-      "description": "Start the WebGit development server with file watching",
-      "command": "npm run dev"
+      "id": "deploy.prod",
+      "title": "Deploy to 8449 (Prod)",
+      "group": "Build & Deploy",
+      "description": "Build Vue UI to public/, then restart webgit.service (systemd, port 8449) so the live site at git.ms.mdevs.uk loads the new code",
+      "command": "bash scripts/deploy.sh && sudo systemctl restart webgit.service"
     },
 
 

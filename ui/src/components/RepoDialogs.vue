@@ -26,6 +26,22 @@ const pickerInitial = ref('')
 
 function openPicker(target) {
   pickerTarget.value = target
+  if (target === 'open' && !openPath.value.trim()) {
+    // 尚未輸入路徑時：用 Source Code Folder 第一筆當 Browse 初始資料夾
+    // （無設定或讀取失敗則維持原行為：從家目錄開始）
+    fetch('/api/settings/source-code-folders')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((data) => {
+        const first = (data.folders || [])[0]
+        pickerInitial.value = first || ''
+        showPicker.value = true
+      })
+      .catch(() => {
+        pickerInitial.value = ''
+        showPicker.value = true
+      })
+    return
+  }
   pickerInitial.value = target === 'open' ? openPath.value : cloneDir.value
   showPicker.value = true
 }
