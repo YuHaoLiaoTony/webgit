@@ -6,6 +6,8 @@ import { useReposStore } from '../stores/repos.js'
 import { useApi } from '../composables/useApi.js'
 import { showToast } from '../composables/useToast.js'
 
+const emit = defineEmits(['open-preferences'])
+
 const uiStore = useUiStore()
 const statusStore = useStatusStore()
 const reposStore = useReposStore()
@@ -141,7 +143,11 @@ watch(() => reposStore.activeRepoId, () => {
 <template>
   <div class="sidebar-header">
     <span>{{ reposStore.displayName(reposStore.activeRepo) || 'Repository' }}</span>
-    <span style="font-size: 10px; cursor: pointer;">⚙</span>
+    <span
+      style="font-size: 10px; cursor: pointer;"
+      title="Preferences"
+      @click="emit('open-preferences')"
+    >⚙</span>
   </div>
 
   <!-- Mode switch: Changes / All Commits -->

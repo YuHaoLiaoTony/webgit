@@ -1864,3 +1864,180 @@ html, body {
   border-radius: 6px;
   font-weight: normal;
 }
+
+/* ── Menu dropdown separator ─────────────────────────────────────────── */
+.menu-dropdown-separator {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 4px 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Dark theme (incremental — chrome + main surfaces)
+   ══════════════════════════════════════════════════════════════════════ */
+html[data-theme='dark'] #app {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+/* Title bar */
+html[data-theme='dark'] .title-bar {
+  background-color: #2d2d2d;
+  border-bottom-color: #3c3c3c;
+}
+
+html[data-theme='dark'] .menu-items {
+  color: #d4d4d4;
+}
+
+html[data-theme='dark'] .menu-dropdown {
+  background: #2d2d2d;
+  border-color: #3c3c3c;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme='dark'] .menu-dropdown-item {
+  color: #d4d4d4;
+}
+
+html[data-theme='dark'] .menu-dropdown-item:hover {
+  background-color: #094771;
+  color: #fff;
+}
+
+html[data-theme='dark'] .menu-dropdown-separator {
+  background: #3c3c3c;
+}
+
+html[data-theme='dark'] .app-title {
+  color: #9a9a9a;
+}
+
+/* Toolbar */
+html[data-theme='dark'] .toolbar {
+  background-color: #252526;
+  border-bottom-color: #3c3c3c;
+}
+
+html[data-theme='dark'] .toolbar-label {
+  color: #b0b0b0;
+}
+
+html[data-theme='dark'] .toolbar-divider {
+  background-color: #3c3c3c;
+}
+
+/* Tabs bar */
+html[data-theme='dark'] .tabs-bar {
+  background-color: #252526;
+  border-bottom-color: #3c3c3c;
+}
+
+/* Sidebar */
+html[data-theme='dark'] .sidebar {
+  background-color: #252526;
+}
+
+html[data-theme='dark'] .sidebar-header {
+  color: #d4d4d4;
+}
+
+html[data-theme='dark'] .sidebar-item {
+  color: #d4d4d4;
+}
+
+html[data-theme='dark'] .sidebar-item:hover {
+  background-color: #2d2d2d;
+}
+
+html[data-theme='dark'] .sidebar-item.selected {
+  background-color: #094771;
+  color: #fff;
+}
+
+html[data-theme='dark'] .sidebar-group-title {
+  color: #9a9a9a;
+}
+
+html[data-theme='dark'] .sidebar-search input {
+  color: #d4d4d4;
+  background: transparent;
+}
+
+/* Content / details */
+html[data-theme='dark'] .content-area {
+  background-color: #1e1e1e;
+}
+
+html[data-theme='dark'] .details-panel {
+  background-color: #1e1e1e;
+}
+
+/* Resizers */
+html[data-theme='dark'] .resizer-v,
+html[data-theme='dark'] .resizer-h {
+  background-color: #3c3c3c;
+}
+
+/* Commit table (dark) */
+html[data-theme='dark'] .commit-table th {
+  background-color: #252526;
+  border-bottom-color: #3c3c3c;
+  color: #9a9a9a;
+}
+
+html[data-theme='dark'] .commit-table tr:hover {
+  background-color: #2d2d2d;
+}
+
+html[data-theme='dark'] .commit-table tr.selected {
+  background-color: #094771 !important;
+}
+
+html[data-theme='dark'] .commit-table td {
+  color: #d4d4d4;
+}
+
+/* Repo Manager (dark) */
+html[data-theme='dark'] .rm-table {
+  border-color: #3c3c3c;
+}
+
+html[data-theme='dark'] .rm-row {
+  background: #2d2d2d;
+  border-bottom-color: #3c3c3c;
+}
+
+html[data-theme='dark'] .rm-row:hover {
+  background: #333333;
+}
+
+html[data-theme='dark'] .rm-row-head {
+  background: #252526;
+  color: #9a9a9a;
+  border-bottom-color: #3c3c3c;
+}
+
+html[data-theme='dark'] .rm-name {
+  color: #d4d4d4;
+}
+
+html[data-theme='dark'] .rm-path {
+  color: #9a9a9a;
+}
+
+html[data-theme='dark'] .rm-btn {
+  background: #2d2d2d;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
+}
+
+html[data-theme='dark'] .rm-btn:hover:not(:disabled) {
+  background: #094771;
+  border-color: #094771;
+  color: #fff;
+}
+
+html[data-theme='dark'] .rm-empty {
+  color: #9a9a9a;
+}

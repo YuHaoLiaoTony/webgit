@@ -261,6 +261,18 @@ export async function startServer(options = {}) {
     }
   });
 
+  // AI 設定狀態（base URL / API key 是否已設定）
+  app.get('/api/ai/status', async (req, res) => {
+    try {
+      res.json({
+        configured: !!process.env.OPENCODE_API_KEY,
+        baseUrl: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+      });
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   app.post('/api/ai-commit-generate', csrfProtection, async (req, res) => {
     try {
       const { stagedFiles, customPrompt } = req.body;

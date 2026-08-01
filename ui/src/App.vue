@@ -6,6 +6,7 @@ import ChangesView from './components/ChangesView.vue'
 import CommitGraph from './components/CommitGraph.vue'
 import DetailsPanel from './components/DetailsPanel.vue'
 import RepoManager from './components/RepoManager.vue'
+import PreferencesDialog from './components/PreferencesDialog.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import PushDialog from './components/PushDialog.vue'
 import PullDialog from './components/PullDialog.vue'
@@ -21,24 +22,30 @@ const uiStore = useUiStore()
 const reposStore = useReposStore()
 const statusStore = useStatusStore()
 
-// --- Repository menu (title bar) ---
-const showRepoMenu = ref(false)
+// --- File menu (title bar) ---
+const showFileMenu = ref(false)
 
-function toggleRepoMenu() {
-  showRepoMenu.value = !showRepoMenu.value
+function toggleFileMenu() {
+  showFileMenu.value = !showFileMenu.value
 }
 
+function openPreferences() {
+  showPreferencesDialog.value = true
+  showFileMenu.value = false
+}
+
+// --- Repository menu (title bar) ---
 function openRepoManager() {
   // 記住進入前的視圖（已在 repos 視圖時則保留原本的 prevView）
   if (uiStore.currentView !== 'repos') {
     uiStore.prevView = uiStore.currentView
   }
   uiStore.currentView = 'repos'
-  showRepoMenu.value = false
+  showFileMenu.value = false
 }
 
 function onDocClick() {
-  showRepoMenu.value = false
+  showFileMenu.value = false
 }
 
 // --- Resizer: Vertical (sidebar width) ---
@@ -76,6 +83,17 @@ const commitGraphRef = ref(null)
 const selectedCommit = computed(() => {
   return commitGraphRef.value?.selectedCommit || null
 })
+
+// ─── Preferences Dialog ─────────────────────────────────────────────────
+const showPreferencesDialog = ref(false)
+
+function openPreferencesDialog() {
+  showPreferencesDialog.value = true
+}
+
+function closePreferencesDialog() {
+  showPreferencesDialog.value = false
+}
 
 // ─── Push Dialog ───────────────────────────────────────────────────────
 const showPushDialog = ref(false)
@@ -196,6 +214,7 @@ onMounted(() => {
   document.addEventListener('mouseup', onMouseUp)
   document.addEventListener('click', onDocClick)
   reposStore.fetchRepos()
+  uiStore.initTheme()
 })
 
 // Watch for active repo changes to refresh data
@@ -217,14 +236,18 @@ onUnmounted(() => {
   <!-- Title Bar -->
   <div class="title-bar">
     <div class="menu-items">
-      <span class="menu-item">File</span>
-      <span class="menu-item">View</span>
-      <div class="menu-dropdown-wrap" @click.stop="toggleRepoMenu">
-        <span class="menu-item" :class="{ 'menu-item-active': showRepoMenu }">Repository</span>
-        <div v-if="showRepoMenu" class="menu-dropdown">
+      <div class="menu-dropdown-wrap" @click.stop="toggleFileMenu">
+        <span class="menu-item" :class="{ 'menu-item-active': showFileMenu }">File</span>
+        <div v-if="showFileMenu" class="menu-dropdown">
+          <div class="menu-dropdown-item" @click="openRepoManager">📂 Open Repository…</div>
+          <div class="menu-dropdown-item" @click="openRepoManager">📥 Clone Repository…</div>
           <div class="menu-dropdown-item" @click="openRepoManager">💼 Manage Repo…</div>
+          <div class="menu-dropdown-separator"></div>
+          <div class="menu-dropdown-item" @click="openPreferences">⚙ Preferences…</div>
         </div>
       </div>
+      <span class="menu-item">View</span>
+      <span class="menu-item">Repository</span>
       <span class="menu-item">Window</span>
       <span class="menu-item">Help</span>
     </div>
@@ -301,7 +324,7 @@ onUnmounted(() => {
   <div class="main-container">
     <!-- Left Sidebar -->
     <div class="sidebar" ref="sidebarRef" id="sidebar">
-      <Sidebar />
+      <Sidebar @open-preferences="openPreferencesDialog" />
     </div>
 
     <!-- Vertical Splitter Bar for Sidebar -->
@@ -371,5 +394,11 @@ onUnmounted(() => {
     :show="showStashDialog"
     @close="closeStashDialog"
     @stashed="onStashed"
+  />
+
+  <!-- Preferences Dialog -->
+  <PreferencesDialog
+    :show="showPreferencesDialog"
+    @close="closePreferencesDialog"
   />
 </template>

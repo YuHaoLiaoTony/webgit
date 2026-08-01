@@ -8,6 +8,20 @@ export const useUiStore = defineStore('ui', () => {
   const theme = ref(localStorage.getItem('theme') || 'light')
   const commitRefreshKey = ref(0)
 
+  // 套用主題到 <html>（light 加 data-theme="light"，dark 移除 → CSS 預設 dark）
+  // 注意：目前 styles.css 為亮色，dark 樣式由 [data-theme="dark"] 覆寫提供
+  function applyThemeToDom(value) {
+    if (value === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+  }
+
+  function initTheme() {
+    applyThemeToDom(theme.value)
+  }
+
   function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
   }
@@ -19,6 +33,7 @@ export const useUiStore = defineStore('ui', () => {
   function setTheme(value) {
     theme.value = value
     localStorage.setItem('theme', value)
+    applyThemeToDom(value)
   }
 
   function triggerCommitRefresh() {
@@ -37,6 +52,7 @@ export const useUiStore = defineStore('ui', () => {
     toggleSidebar,
     setView,
     setTheme,
+    initTheme,
     triggerCommitRefresh,
   }
 })

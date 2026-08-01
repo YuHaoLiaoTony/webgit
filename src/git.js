@@ -1,6 +1,19 @@
 import simpleGit from 'simple-git';
 import { normalize, isAbsolute, relative } from 'path';
 
+// ── AI profile helpers（存於 global git config `webgit.ai`）──────────
+const AI_PROFILES_KEY = 'webgit.ai';
+
+function maskApiKey(key) {
+  if (!key) return '';
+  if (key.length <= 8) return '****';
+  return `${key.slice(0, 3)}****${key.slice(-4)}`;
+}
+
+function generateProfileId() {
+  return 'ai_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+}
+
 export function createGitAPI(repoPath) {
   const git = simpleGit(repoPath);
 
@@ -618,6 +631,110 @@ export function createGitAPI(repoPath) {
         userEmail,
         defaultBranch,
         aiPrompt
+      };
+    },
+
+    /**
+     * 讀取 AI profiles（global git config `webgit.ai`，JSON string）。
+     * apiKey 一律遮蔽後回傳。
+     */
+    async getAiProfiles() {
+      const config = await git.listConfig();
+      const raw = config.all[AI_PROFILES_KEY] || '';
+      let data = { version: 1, active: '', profiles: [] };
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch (_) {
+          // 損毀的 JSON → 回傳空
+        }
+      }
+      const profiles = Array.isArray(data.profiles) ? data.profiles : [];
+      return {
+        active: data.active || '',
+        profiles: profiles.map(p => ({
+          id: p.id || '',
+          name: p.name || '',
+          baseUrl: p.baseUrl || '',
+          hasKey: !!(p.apiKey),
+          apiKeyMasked: maskApiKey(p.apiKey || ''),
+          prompt: p.prompt || '',
+          note: p.note || '',
+        })),
+      };
+    },
+
+    /**
+     * 整包儲存 AI profiles（global git config `webgit.ai`）。
+     * apiKey 若為遮蔽格式（含 ****）表示前端未修改 → 保留舊值。
+     */
+    async setAiProfiles({ profiles, active }) {
+      if (!Array.isArray(profiles)) {
+        throw new Error('profiles 必須是陣列');
+      }
+
+      // 讀現有未遮蔽值，用於保留未修改的 apiKey
+      const config = await git.listConfig();
+      const raw = config.all[AI_PROFILES_KEY] || '';
+      const oldKeys = {};
+      if (raw) {
+        try {
+          const old = JSON.parse(raw);
+          for (const p of (old.profiles || [])) {
+            oldKeys[p.id] = p.apiKey || '';
+          }
+        } catch (_) {}
+      }
+
+      const cleaned = [];
+      const ids = new Set();
+      for (const p of profiles) {
+        const name = String(p?.name || '').trim();
+        const baseUrl = String(p?.baseUrl || '').trim();
+        const prompt = String(p?.prompt || '');
+        const note = String(p?.note || '');
+        if (!name) throw new Error('每組 AI 設定需要名稱');
+        if (!/^https?:\/\/.+/.test(baseUrl)) {
+          throw new Error(`「${name}」的 Base URL 格式不正確`);
+        }
+        let id = String(p?.id || '').trim();
+        let apiKey = String(p?.apiKey || '').trim();
+        // 遮蔽格式（含 ****）= 未修改 → 保留舊 key
+        if (apiKey.includes('****')) {
+          apiKey = (oldKeys[id] || '').trim();
+        }
+        if (!id) {
+          id = generateProfileId();
+          while (ids.has(id)) id = generateProfileId();
+        } else if (ids.has(id)) {
+          throw new Error('profile id 重複');
+        }
+        if (!apiKey) throw new Error(`「${name}」需要 API Key`);
+        ids.add(id);
+        cleaned.push({ id, name, baseUrl, apiKey, prompt, note });
+      }
+
+      // active 必須指向存在的 id，否則取第一個
+      let activeId = String(active || '').trim();
+      if (!ids.has(activeId)) activeId = cleaned[0]?.id || '';
+
+      await git.addConfig(AI_PROFILES_KEY, JSON.stringify({
+        version: 1,
+        active: activeId,
+        profiles: cleaned,
+      }), false, 'global');
+
+      return {
+        active: activeId,
+        profiles: cleaned.map(p => ({
+          id: p.id,
+          name: p.name,
+          baseUrl: p.baseUrl,
+          hasKey: true,
+          apiKeyMasked: maskApiKey(p.apiKey),
+          prompt: p.prompt,
+          note: p.note,
+        })),
       };
     },
 

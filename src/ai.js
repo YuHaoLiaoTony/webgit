@@ -33,12 +33,13 @@ function getFileType(filePath) {
  * @param {Array<{path: string, status: string}>} stagedFiles
  * @param {string} repoPath
  * @param {string} [customPrompt]
+ * @param {{baseUrl?: string, apiKey?: string}} [aiConfig] 啟用中 AI profile 的連線設定
  * @returns {Promise<{title: string, body: string}>}
  */
-export async function generateCommitMessage(gitAPI, stagedFiles, repoPath, customPrompt) {
+export async function generateCommitMessage(gitAPI, stagedFiles, repoPath, customPrompt, aiConfig = {}) {
   const openai = new OpenAI({
-    baseURL: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
-    apiKey: process.env.OPENCODE_API_KEY,
+    baseURL: aiConfig.baseUrl || process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+    apiKey: aiConfig.apiKey || process.env.OPENCODE_API_KEY,
   });
 
   // ── 1. Gather context ──────────────────────────────────────────

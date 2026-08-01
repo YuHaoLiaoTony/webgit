@@ -47,6 +47,12 @@ export function useApi() {
         const err = await response.json().catch(() => ({}))
         throw new Error(err.error || `API error: ${response.status}`)
       }
+      // 防禦：若回應不是 JSON（例如 server 未更新，API 路由被 SPA fallback 回傳 HTML），
+      // 丟出乾淨錯誤而非 JSON parse SyntaxError
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        throw new Error('API error: server 回傳了非 JSON 回應（server 可能尚未更新）')
+      }
       return await response.json()
     },
 

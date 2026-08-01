@@ -136,35 +136,20 @@ const inlineCommitError = ref(null)
 
 // ─── AI commit message generation ────────────────────────────────────
 const aiGenerating = ref(false)
-const aiPromptSaving = ref(false)
 const customPrompt = ref('')
 const showCustomPrompt = ref(false)
 
-// Load the prompt saved in git config (webgit.aiprompt)
+// 載入啟用中 AI profile 的 prompt 預填（可臨時覆寫，不會儲存）
 async function loadSavedPrompt() {
   const { get } = useApi()
   try {
-    const config = await get('/config')
-    if (config.aiPrompt) {
-      customPrompt.value = config.aiPrompt
+    const data = await get('/ai/profiles')
+    const active = (data.profiles || []).find(p => p.id === data.active)
+    if (active?.prompt) {
+      customPrompt.value = active.prompt
     }
   } catch (_) {
     // Config may be unavailable — ignore and keep the prompt empty
-  }
-}
-
-// Save the current prompt to git config (empty → clear saved prompt)
-async function savePrompt() {
-  const { post } = useApi()
-  const toast = useToast()
-  aiPromptSaving.value = true
-  try {
-    await post('/config', { key: 'webgit.aiprompt', value: customPrompt.value.trim() })
-    toast.showToast('success', customPrompt.value.trim() ? '提示詞已保存到 git config' : '提示詞已清除')
-  } catch (e) {
-    toast.showToast('error', `保存失敗：${e.message}`)
-  } finally {
-    aiPromptSaving.value = false
   }
 }
 
@@ -711,20 +696,14 @@ onUnmounted(() => {
               <button
                 class="cv-ai-prompt-btn"
                 @click="showCustomPrompt = !showCustomPrompt"
-                :title="showCustomPrompt ? 'Hide custom prompt' : 'Add custom prompt'"
+                :title="showCustomPrompt ? 'Hide custom prompt' : '臨時提示詞（預填啟用中 AI profile 的 prompt）'"
               >📝</button>
-              <button
-                class="cv-ai-prompt-btn"
-                :disabled="aiPromptSaving"
-                @click="savePrompt"
-                title="保存提示詞到 git config（清空後保存＝清除已保存的提示詞）"
-              >💾</button>
             </div>
             <div v-if="showCustomPrompt" class="cv-custom-prompt-wrap">
               <textarea
                 v-model="customPrompt"
                 class="cv-custom-prompt-input"
-                placeholder="自訂提示詞（選填）：例如「請用繁體中文」、「重點放效能改善」…"
+                placeholder="臨時提示詞（選填，覆寫啟用中 profile 的 prompt）：例如「請用繁體中文」…"
                 rows="2"
               ></textarea>
             </div>

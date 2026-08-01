@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useReposStore } from '../stores/repos.js'
 import RepoDialogs from './RepoDialogs.vue'
 
@@ -35,42 +35,59 @@ async function handleRemoveRepo(id, event) {
     // Error is logged by the store
   }
 }
+
+// 依序產生：每個 repo 頁籤，並在「當前(active)頁籤」右邊插入「+」按鈕
+// 沒有 active repo（或完全沒有 repo）時，「+」放在最後
+const tabItems = computed(() => {
+  const items = []
+  for (const repo of reposStore.repos) {
+    items.push({ kind: 'tab', repo })
+    if (repo.id === reposStore.activeRepoId) {
+      items.push({ kind: 'add' })
+    }
+  }
+  if (!reposStore.activeRepoId) {
+    items.push({ kind: 'add' })
+  }
+  return items
+})
 </script>
 
 <template>
   <div class="tabs-bar">
-    <div
-      v-for="repo in reposStore.repos"
-      :key="repo.id"
-      class="tab"
-      :class="{ active: repo.id === reposStore.activeRepoId }"
-      @click="reposStore.setActiveRepo(repo.id)"
-    >
-      <span>{{ reposStore.displayName(repo) }}{{ repo.isDirty ? '*' : '' }}</span>
-      <span
-        class="tab-close"
-        @click="handleRemoveRepo(repo.id, $event)"
-        title="Close repository"
-      >✕</span>
-    </div>
-
     <!-- Empty state when no repos -->
     <div v-if="reposStore.repos.length === 0" class="tab-inactive" style="color: #999; font-style: italic;">
       No repositories open
     </div>
 
-    <!-- "+" Button with dropdown -->
-    <div class="tabs-add-wrapper">
-      <div class="tabs-add-btn" @click="toggleDropdown">+</div>
-      <div v-if="showDropdown" class="tabs-dropdown">
-        <div class="tabs-dropdown-item" @click="openOpenDialog">
-          📂 Open Repository…
-        </div>
-        <div class="tabs-dropdown-item" @click="openCloneDialog">
-          📥 Clone Repository…
+    <template v-for="item in tabItems" :key="item.kind === 'add' ? '__add__' : item.repo.id">
+      <div
+        v-if="item.kind === 'tab'"
+        class="tab"
+        :class="{ active: item.repo.id === reposStore.activeRepoId }"
+        @click="reposStore.setActiveRepo(item.repo.id)"
+      >
+        <span>{{ reposStore.displayName(item.repo) }}{{ item.repo.isDirty ? '*' : '' }}</span>
+        <span
+          class="tab-close"
+          @click="handleRemoveRepo(item.repo.id, $event)"
+          title="Close repository"
+        >✕</span>
+      </div>
+
+      <!-- "+" 緊跟在當前(active)頁籤右邊 -->
+      <div v-else class="tabs-add-wrapper">
+        <div class="tabs-add-btn" @click="toggleDropdown">+</div>
+        <div v-if="showDropdown" class="tabs-dropdown">
+          <div class="tabs-dropdown-item" @click="openOpenDialog">
+            📂 Open Repository…
+          </div>
+          <div class="tabs-dropdown-item" @click="openCloneDialog">
+            📥 Clone Repository…
+          </div>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 
   <!-- Shared Open / Clone dialogs -->
@@ -95,10 +112,10 @@ async function handleRemoveRepo(id, event) {
 }
 
 /* ── Add button wrapper (for dropdown positioning) ─────────────────── */
+/* 不加 margin-left: auto — 「+」緊跟在當前頁籤右邊，而非釘在最右側 */
 .tabs-add-wrapper {
   position: relative;
-  margin-left: auto;
-  padding-right: 10px;
+  margin-right: 4px;
 }
 
 .tabs-add-btn {
@@ -110,6 +127,8 @@ async function handleRemoveRepo(id, event) {
   border-radius: 3px;
   line-height: 1;
   user-select: none;
+  /* 相較左側頁籤微調高 4px，讓垂直置中一致 */
+  margin-bottom: 4px;
 }
 
 .tabs-add-btn:hover {
