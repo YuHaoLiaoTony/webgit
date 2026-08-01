@@ -261,15 +261,44 @@ export async function startServer(options = {}) {
     }
   });
 
-  // AI 設定狀態（base URL / API key 是否已設定）
+  // AI 設定狀態（啟用中的 profile）
   app.get('/api/ai/status', async (req, res) => {
     try {
+      const gitAPI = getGitAPI(req);
+      const { profiles, active } = await gitAPI.getAiProfiles();
+      const activeProfile = profiles.find(p => p.id === active) || null;
       res.json({
-        configured: !!process.env.OPENCODE_API_KEY,
-        baseUrl: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+        configured: !!activeProfile,
+        activeId: activeProfile?.id || null,
+        activeName: activeProfile?.name || null,
+        baseUrl: activeProfile?.baseUrl || null,
+        profilesCount: profiles.length,
       });
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // AI profiles 列表（apiKey 遮蔽）
+  app.get('/api/ai/profiles', async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const data = await gitAPI.getAiProfiles();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // AI profiles 整包儲存
+  app.post('/api/ai/profiles', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { profiles, active } = req.body || {};
+      const result = await gitAPI.setAiProfiles({ profiles, active });
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: sanitizeError(error) });
     }
   });
 
@@ -281,20 +310,25 @@ export async function startServer(options = {}) {
         return res.status(400).json({ error: 'No staged files' });
       }
 
-      if (!process.env.OPENCODE_API_KEY) {
-        return res.status(400).json({ error: 'OpenCode API key not configured' });
-      }
-
       const gitAPI = getGitAPI(req);
 
-      // If no prompt was provided, fall back to the prompt saved in git config
-      let prompt = customPrompt;
-      if (!prompt || !prompt.trim()) {
-        const config = await gitAPI.getConfig();
-        prompt = config.aiPrompt || undefined;
+      // 強制使用 profiles：沒有啟用的 profile 就不提供 AI
+      const { profiles, active } = await gitAPI.getAiProfiles();
+      const activeProfile = profiles.find(p => p.id === active);
+      if (!activeProfile) {
+        return res.status(400).json({ error: '尚未設定 AI profile，請到 Preferences → AI 頁籤設定' });
       }
 
-      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath, prompt);
+      // Prompt 優先序：請求帶的 customPrompt > active profile 的 prompt
+      let prompt = customPrompt;
+      if (!prompt || !prompt.trim()) {
+        prompt = activeProfile.prompt || undefined;
+      }
+
+      const result = await generateCommitMessage(gitAPI, stagedFiles, repoPath, prompt, {
+        baseUrl: activeProfile.baseUrl,
+        apiKey: activeProfile.apiKey,
+      });
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
@@ -593,6 +627,11 @@ export async function startServer(options = {}) {
   });
 
   // SPA fallback - serve index.html for any unmatched route (so browser refresh works on any path)
+  // 未定義的 /api/* → 回傳 JSON 404（避免被下方 SPA fallback 回傳 HTML）
+  app.use('/api', (req, res) => {
+    res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.path}` });
+  });
+
   app.get('*', (req, res) => {
     res.sendFile(join(__dirname, '../public/index.html'));
   });
