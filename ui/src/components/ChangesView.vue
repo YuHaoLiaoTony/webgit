@@ -128,6 +128,25 @@ const committing = ref(false)
 const commitError = ref(null)
 const commitInputRef = ref(null)
 
+// ─── Context menu (Unstaged header) ────────────────────────────────
+const unstagedCtxMenu = ref({ visible: false, x: 0, y: 0, target: { type: 'header', path: '' } })
+
+function showUnstagedCtxMenu(event, target = { type: 'header', path: '' }) {
+  event.preventDefault()
+  unstagedCtxMenu.value = { visible: true, x: event.clientX, y: event.clientY, target }
+}
+
+function closeUnstagedCtxMenu() {
+  unstagedCtxMenu.value.visible = false
+}
+
+function onCtxMenuDocumentClick(e) {
+  const menu = document.querySelector('.cv-unstaged-context-menu')
+  if (menu && !menu.contains(e.target)) {
+    closeUnstagedCtxMenu()
+  }
+}
+
 // ─── Inline commit (below diff) ───────────────────────────────────────
 const commitTitle = ref('')
 const commitBody = ref('')
@@ -238,7 +257,33 @@ function closeCommitDialog() {
 const showDiscardConfirm = ref(false)
 const discarding = ref(false)
 
+const discardLabel = computed(() => {
+  const { target } = unstagedCtxMenu.value
+  if (target.type === 'file') return `Discard ${target.path.split('/').pop()}`
+  if (target.type === 'dir') return `Discard ${target.path.split('/').pop()}/`
+  return 'Discard All Changes'
+})
+
 function openDiscardConfirm() {
+  closeUnstagedCtxMenu()
+  showDiscardConfirm.value = true
+}
+
+function handleDiscardSelected() {
+  const { target } = unstagedCtxMenu.value
+  if (target.type === 'header') {
+    openDiscardConfirm()
+    return
+  }
+  closeUnstagedCtxMenu()
+  if (target.type === 'file') {
+    checkedFiles.clear()
+    checkedFiles.add(target.path)
+  } else if (target.type === 'dir') {
+    const filesUnder = getFilesUnderDir(unstagedFiles.value, target.path)
+    checkedFiles.clear()
+    for (const p of filesUnder) checkedFiles.add(p)
+  }
   showDiscardConfirm.value = true
 }
 
@@ -495,6 +540,7 @@ onMounted(() => {
   document.addEventListener('mousemove', onGlobalMouseMove)
   document.addEventListener('mouseup', onGlobalMouseUp)
   document.addEventListener('keydown', onKeydown)
+  document.addEventListener('click', onCtxMenuDocumentClick)
 
   // Fetch status from the real API
   statusStore.fetchStatus()
@@ -517,6 +563,7 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', onGlobalMouseMove)
   document.removeEventListener('mouseup', onGlobalMouseUp)
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('click', onCtxMenuDocumentClick)
 })
 </script>
 
@@ -534,7 +581,7 @@ onUnmounted(() => {
           ref="unstagedRef"
           style="flex: 1; display: flex; flex-direction: column; min-height: 60px; overflow: hidden;"
         >
-          <div class="cv-group-header">
+          <div class="cv-group-header" @contextmenu.prevent="showUnstagedCtxMenu">
             <span>Unstaged Changes</span>
             <span class="cv-group-count">{{ unstagedFiles.length }}</span>
             <span
@@ -551,6 +598,7 @@ onUnmounted(() => {
                 :class="{ 'dir-selected': selectedDir === item.path }"
                 :style="{ paddingLeft: (4 + item.depth * 16) + 'px' }"
                 @click="toggleDir(item.path, 'unstaged')"
+                @contextmenu.prevent.stop="(e) => { selectedDir = item.path; selectedFile = null; showUnstagedCtxMenu(e, { type: 'dir', path: item.path }) }"
               >
                 <span
                   class="tree-toggle"
@@ -569,6 +617,7 @@ onUnmounted(() => {
                 :style="{ paddingLeft: (4 + (item.depth || 0) * 16) + 'px' }"
                 @click="selectFile(item)"
                 @dblclick="onFileDblClick(item, 'unstaged')"
+                @contextmenu.prevent.stop="showUnstagedCtxMenu($event, { type: 'file', path: item.path })"
               >
                 <span class="tree-toggle" style="visibility:hidden">▶</span>
                 <span :class="['cv-file-status', statusCssMap[item.status]]">
@@ -764,6 +813,21 @@ onUnmounted(() => {
               {{ committing ? 'Committing…' : 'Commit' }}
             </button>
           </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Unstaged Header Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="unstagedCtxMenu.visible"
+        class="cv-unstaged-context-menu"
+        :style="{ left: unstagedCtxMenu.x + 'px', top: unstagedCtxMenu.y + 'px' }"
+      >
+        <div class="cv-ctx-menu-item" @click="handleDiscardSelected">
+          <span class="cv-ctx-menu-icon">🗑️</span>
+          <span class="cv-ctx-menu-label">{{ discardLabel }}</span>
+          <span class="cv-ctx-menu-shortcut">Delete</span>
         </div>
       </div>
     </Teleport>
@@ -1136,5 +1200,51 @@ onUnmounted(() => {
   border-color: #007acc;
   border-style: solid;
   box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+/* ── Unstaged Header Context Menu ────────────────────────────────── */
+.cv-unstaged-context-menu {
+  position: fixed;
+  z-index: 99999;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 6px 0;
+  min-width: 200px;
+  font-size: 12px;
+}
+
+.cv-ctx-menu-item {
+  padding: 7px 14px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  transition: background-color 0.1s;
+}
+
+.cv-ctx-menu-item:hover {
+  background-color: #f0f6fc;
+}
+
+.cv-ctx-menu-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+
+.cv-ctx-menu-label {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.cv-ctx-menu-shortcut {
+  font-size: 10px;
+  color: #999;
+  margin-left: 12px;
 }
 </style>
