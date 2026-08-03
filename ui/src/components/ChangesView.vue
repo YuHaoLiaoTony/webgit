@@ -3,6 +3,9 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStatusStore } from '../stores/status.js'
 import { useApi } from '../composables/useApi.js'
 import { useToast } from '../composables/useToast.js'
+import { useStatusMaps } from '../composables/changes/useStatusMaps.js'
+import { useFileTree } from '../composables/changes/useFileTree.js'
+import { useDragResize } from '../composables/shared/useDragResize.js'
 import DiffViewer from './DiffViewer.vue'
 
 const statusStore = useStatusStore()
@@ -13,88 +16,7 @@ const unstageCount = computed(() => statusStore.unstagedFiles.length)
 const stageCount = computed(() => statusStore.stagedFiles.length)
 
 // ─── Status label / style maps ─────────────────────────────────────────
-const statusLabelMap = { added: 'C', modified: 'U', deleted: 'D', renamed: 'M', staged: 'A' }
-const statusCssMap = { added: 'cv-status-added', modified: 'cv-status-modified', deleted: 'cv-status-deleted', renamed: 'cv-status-renamed', staged: 'cv-status-added' }
-const statusActionLabel = { added: 'Created', modified: 'Updated', deleted: 'Deleted', renamed: 'Moved', staged: 'Added' }
-
-// ─── Tree building ─────────────────────────────────────────────────────
-function buildFlatTree(files) {
-  // Collect all directory paths
-  const dirSet = new Set()
-  for (const f of files) {
-    const parts = f.path.split('/')
-    for (let i = 1; i < parts.length; i++) {
-      dirSet.add(parts.slice(0, i).join('/'))
-    }
-  }
-
-  // Build a flat list from the root
-  const items = []
-  const addedDirs = new Set()
-
-  function addDir(dirPath, depth) {
-    if (addedDirs.has(dirPath)) return
-    addedDirs.add(dirPath)
-    items.push({ type: 'dir', path: dirPath, depth, name: dirPath.split('/').pop() + '/' })
-    addChildren(dirPath, depth + 1)
-  }
-
-  function addChildren(parentPath, depth) {
-    // Collect direct child dirs
-    const childDirs = new Set()
-    const childFiles = []
-    for (const f of files) {
-      const parts = f.path.split('/')
-      const dir = parts.slice(0, -1).join('/')
-      const fileName = parts[parts.length - 1]
-      if (dir === parentPath || (!parentPath && parts.length === 1)) {
-        // Direct child file
-        childFiles.push(f)
-      } else if (dir.startsWith(parentPath ? parentPath + '/' : '')) {
-        // Check if this is a direct child dir
-        const rel = dir.slice(parentPath ? parentPath.length + 1 : 0)
-        const topDir = rel.split('/')[0]
-        const fullDirPath = parentPath ? parentPath + '/' + topDir : topDir
-        if (dirSet.has(fullDirPath)) {
-          childDirs.add(fullDirPath)
-        }
-      }
-    }
-    // Also scan original files for direct dirs
-    for (const f of files) {
-      const parts = f.path.split('/')
-      for (let i = 1; i < parts.length; i++) {
-        const dirPath = parts.slice(0, i).join('/')
-        if (parentPath === '' || dirPath.startsWith(parentPath + '/')) {
-          // Check if it's a direct child
-          const rel = parentPath ? dirPath.slice(parentPath.length + 1) : dirPath
-          if (rel.indexOf('/') === -1 && rel.length > 0) {
-            childDirs.add(dirPath)
-          }
-        }
-      }
-    }
-
-    // Remove parent itself
-    childDirs.delete(parentPath)
-
-    // Sort and add dirs (recursively via addDir)
-    const sortedDirs = [...childDirs].sort()
-    for (const d of sortedDirs) {
-      addDir(d, depth)
-    }
-
-    // Sort and add files
-    const sortedFiles = [...childFiles].sort((a, b) => a.fileName?.localeCompare(b.fileName) || a.path.localeCompare(b.path))
-    for (const f of sortedFiles) {
-      const fileName = f.path.split('/').pop()
-      items.push({ type: 'file', ...f, fileName, depth })
-    }
-  }
-
-  addChildren('', 0)
-  return items
-}
+const { statusLabelMap, statusCssMap, statusActionLabel } = useStatusMaps()
 
 // ─── State ─────────────────────────────────────────────────────────────
 // Real data from the status store, not mock data
@@ -113,13 +35,22 @@ const allChangedFiles = computed(() => [
   ...stagedFiles.value,
 ])
 
-const unstagedFlatItems = computed(() => buildFlatTree(unstagedFiles.value))
-const stagedFlatItems = computed(() => buildFlatTree(stagedFiles.value))
-
 const selectedFile = ref(null)
-const selectedDir = ref(null)
 const checkedFiles = reactive(new Set())
-const collapsedDirs = reactive({ unstaged: new Set(), staged: new Set() })
+
+// ─── File tree (composable) ────────────────────────────────────────────
+const {
+  selectedDir,
+  unstagedFlatItems,
+  stagedFlatItems,
+  visibleUnstagedItems,
+  visibleStagedItems,
+  toggleDir,
+  isDirOpen,
+  isDirCollapsed,
+  shouldShowItem,
+  getFilesUnderDir,
+} = useFileTree(unstagedFiles, stagedFiles, selectedFile)
 
 // ─── Commit dialog ────────────────────────────────────────────────────
 const showCommitDialog = ref(false)
@@ -324,40 +255,7 @@ function onDiffKeydown(e) {
   }
 }
 
-function toggleDir(dirPath, group) {
-  const set = collapsedDirs[group]
-  if (set.has(dirPath)) {
-    set.delete(dirPath)
-  } else {
-    set.add(dirPath)
-  }
-  selectedDir.value = dirPath
-  selectedFile.value = null
-}
 
-function isDirOpen(dirPath, group) {
-  return !collapsedDirs[group].has(dirPath)
-}
-
-function isDirCollapsed(dirPath, group) {
-  return collapsedDirs[group].has(dirPath)
-}
-
-function shouldShowItem(item, group) {
-  if (item.type === 'file' || item.type === 'dir') {
-    const set = collapsedDirs[group]
-    const parts = item.path.split('/')
-    for (let i = 1; i < parts.length; i++) {
-      const parentPath = parts.slice(0, i).join('/')
-      if (set.has(parentPath)) return false
-    }
-    return true
-  }
-  return true
-}
-
-const visibleUnstagedItems = computed(() => unstagedFlatItems.value.filter(item => shouldShowItem(item, 'unstaged')))
-const visibleStagedItems = computed(() => stagedFlatItems.value.filter(item => shouldShowItem(item, 'staged')))
 
 // ─── File selection ────────────────────────────────────────────────────
 function selectFile(file) {
@@ -386,13 +284,6 @@ function toggleCheck(file) {
 
 function isChecked(file) {
   return checkedFiles.has(file.path)
-}
-
-// ─── Helper: collect all file paths under a dir ────────────────────────
-function getFilesUnderDir(files, dirPath) {
-  return files
-    .filter(f => f.path === dirPath || f.path.startsWith(dirPath + '/'))
-    .map(f => f.path)
 }
 
 // ─── Actions ───────────────────────────────────────────────────────────
@@ -441,104 +332,37 @@ function commitChanges() {
   openCommitDialog()
 }
 
-// ─── Vertical resizer (staged panel) via staged header drag ────────────
+// ─── Drag resize (composables) ─────────────────────────────────────────
 const stagedRef = ref(null)
 const stagedHeaderRef = ref(null)
-let isDraggingCV = false
-let cvStartY = 0
-let cvStagedHeight = 0
-
-function onCVResizerMouseDown(e) {
-  isDraggingCV = true
-  cvStartY = e.clientY
-  if (stagedRef.value) cvStagedHeight = stagedRef.value.offsetHeight
-  if (stagedHeaderRef.value) stagedHeaderRef.value.classList.add('dragging')
-  document.body.style.cursor = 'row-resize'
-  document.body.style.userSelect = 'none'
-  e.preventDefault()
-}
-
-// ─── Commit panel drag resizer ────────────────────────────────────────
 const commitPanelRef = ref(null)
 const commitHeaderRef = ref(null)
-let isDraggingCommit = false
-let commitDragStartY = 0
-let commitStartHeight = 0
-
-function onCommitResizerMouseDown(e) {
-  isDraggingCommit = true
-  commitDragStartY = e.clientY
-  if (commitPanelRef.value) commitStartHeight = commitPanelRef.value.offsetHeight
-  if (commitHeaderRef.value) commitHeaderRef.value.classList.add('dragging')
-  document.body.style.cursor = 'row-resize'
-  document.body.style.userSelect = 'none'
-  e.preventDefault()
-}
-
-// ─── Horizontal resizer (files / diff) ────────────────────────────────
 const filesPanelRef = ref(null)
 const hResizerRef = ref(null)
-let isDraggingH = false
-let hStartX = 0
-let hStartWidth = 0
 
-function onHResizerMouseDown(e) {
-  isDraggingH = true
-  hStartX = e.clientX
-  if (filesPanelRef.value) hStartWidth = filesPanelRef.value.offsetWidth
-  if (hResizerRef.value) hResizerRef.value.classList.add('dragging')
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-}
+const { onMouseDown: onStagedResizerMouseDown } = useDragResize({
+  direction: 'vertical',
+  targetRef: stagedRef,
+  handleRef: stagedHeaderRef,
+  minSize: 60,
+})
 
-function onGlobalMouseMove(e) {
-  if (isDraggingCV && stagedRef.value) {
-    // deltaY = cvStartY - e.clientY: drag UP → positive → staged grows
-    const deltaY = cvStartY - e.clientY
-    const newHeight = cvStagedHeight + deltaY
-    if (newHeight >= 60) {
-      stagedRef.value.style.flex = 'none'
-      stagedRef.value.style.height = newHeight + 'px'
-    }
-  }
-  if (isDraggingH && filesPanelRef.value) {
-    const deltaX = e.clientX - hStartX
-    const newWidth = hStartWidth + deltaX
-    if (newWidth >= 200 && newWidth <= 600) {
-      filesPanelRef.value.style.width = newWidth + 'px'
-    }
-  }
-  if (isDraggingCommit && commitPanelRef.value) {
-    // deltaY = commitDragStartY - e.clientY: drag UP → positive → commit panel grows
-    const deltaY = commitDragStartY - e.clientY
-    const newHeight = commitStartHeight + deltaY
-    if (newHeight >= 80) {
-      commitPanelRef.value.style.flex = 'none'
-      commitPanelRef.value.style.height = newHeight + 'px'
-    }
-  }
-}
+const { onMouseDown: onCommitResizerMouseDown } = useDragResize({
+  direction: 'vertical',
+  targetRef: commitPanelRef,
+  handleRef: commitHeaderRef,
+  minSize: 80,
+})
 
-function onGlobalMouseUp() {
-  if (isDraggingCV) {
-    isDraggingCV = false
-    if (stagedHeaderRef.value) stagedHeaderRef.value.classList.remove('dragging')
-  }
-  if (isDraggingH) {
-    isDraggingH = false
-    if (hResizerRef.value) hResizerRef.value.classList.remove('dragging')
-  }
-  if (isDraggingCommit) {
-    isDraggingCommit = false
-    if (commitHeaderRef.value) commitHeaderRef.value.classList.remove('dragging')
-  }
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
-}
+const { onMouseDown: onHResizerMouseDown } = useDragResize({
+  direction: 'horizontal',
+  targetRef: filesPanelRef,
+  handleRef: hResizerRef,
+  minSize: 200,
+  maxSize: 600,
+})
 
 onMounted(() => {
-  document.addEventListener('mousemove', onGlobalMouseMove)
-  document.addEventListener('mouseup', onGlobalMouseUp)
   document.addEventListener('keydown', onKeydown)
   document.addEventListener('click', onCtxMenuDocumentClick)
 
@@ -560,8 +384,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousemove', onGlobalMouseMove)
-  document.removeEventListener('mouseup', onGlobalMouseUp)
   document.removeEventListener('keydown', onKeydown)
   document.removeEventListener('click', onCtxMenuDocumentClick)
 })
@@ -647,7 +469,7 @@ onUnmounted(() => {
           <div
             class="cv-group-header"
             ref="stagedHeaderRef"
-            @mousedown="onCVResizerMouseDown"
+            @mousedown="onStagedResizerMouseDown"
           >
             <span>Staged Changes</span>
             <span class="cv-group-count">{{ stagedFiles.length }}</span>
