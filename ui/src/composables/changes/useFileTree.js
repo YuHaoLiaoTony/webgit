@@ -1,4 +1,4 @@
-import { ref, reactive, computed } from 'vue'
+import { reactive, computed } from 'vue'
 
 /**
  * Build a flat tree (directories + files) from a flat file list.
@@ -87,14 +87,12 @@ function buildFlatTree(files) {
  *
  * @param {import('vue').Ref<Array>} unstagedFiles  reactive array of unstaged file items
  * @param {import('vue').Ref<Array>} stagedFiles    reactive array of staged file items
- * @param {import('vue').Ref}        selectedFile   ref that tracks the currently selected file
+ * @param {import('vue').Ref}        selectedFile   shared ref — cleared when a directory is toggled
+ * @param {import('vue').Ref}        selectedDir    shared ref — updated when a directory is toggled
  */
-export function useFileTree(unstagedFiles, stagedFiles, selectedFile) {
+export function useFileTree(unstagedFiles, stagedFiles, selectedFile, selectedDir) {
   // ── collapsed directories ──────────────────────────────────────────
   const collapsedDirs = reactive({ unstaged: new Set(), staged: new Set() })
-
-  // ── selected directory ─────────────────────────────────────────────
-  const selectedDir = ref(null)
 
   // ── flat tree computed ─────────────────────────────────────────────
   const unstagedFlatItems = computed(() => buildFlatTree(unstagedFiles.value))

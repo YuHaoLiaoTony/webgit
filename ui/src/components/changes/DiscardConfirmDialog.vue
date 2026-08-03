@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { onMounted, onUnmounted } from 'vue'
+
+const props = defineProps({
   visible: { type: Boolean, default: false },
   checkedFiles: { type: Set, default: () => new Set() },
   discardLabel: { type: String, default: 'Discard Changes' },
@@ -7,6 +9,15 @@ defineProps({
 })
 
 const emit = defineEmits(['confirm', 'close'])
+
+function onKeydown(e) {
+  if (e.key === 'Escape' && props.visible) {
+    emit('close')
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
