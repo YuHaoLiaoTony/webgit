@@ -7,6 +7,9 @@ import { useStatusMaps } from '../composables/changes/useStatusMaps.js'
 import { useFileTree } from '../composables/changes/useFileTree.js'
 import { useDragResize } from '../composables/shared/useDragResize.js'
 import DiffViewer from './DiffViewer.vue'
+import ContextMenu from './shared/ContextMenu.vue'
+import FileTreePanel from './changes/FileTreePanel.vue'
+import DiscardConfirmDialog from './changes/DiscardConfirmDialog.vue'
 
 const statusStore = useStatusStore()
 
@@ -64,6 +67,10 @@ const unstagedCtxMenu = ref({ visible: false, x: 0, y: 0, target: { type: 'heade
 
 function showUnstagedCtxMenu(event, target = { type: 'header', path: '' }) {
   event.preventDefault()
+  if (target.type === 'dir') {
+    selectedDir.value = target.path
+    selectedFile.value = null
+  }
   unstagedCtxMenu.value = { visible: true, x: event.clientX, y: event.clientY, target }
 }
 
@@ -71,12 +78,15 @@ function closeUnstagedCtxMenu() {
   unstagedCtxMenu.value.visible = false
 }
 
-function onCtxMenuDocumentClick(e) {
-  const menu = document.querySelector('.cv-unstaged-context-menu')
-  if (menu && !menu.contains(e.target)) {
-    closeUnstagedCtxMenu()
-  }
-}
+// ─── Context menu items (computed for ContextMenu component) ──────────
+const contextMenuItems = computed(() => [
+  {
+    label: discardLabel.value,
+    icon: '🗑️',
+    shortcut: 'Delete',
+    action: handleDiscardSelected,
+  },
+])
 
 // ─── Inline commit (below diff) ───────────────────────────────────────
 const commitTitle = ref('')
@@ -333,19 +343,11 @@ function commitChanges() {
 }
 
 // ─── Drag resize (composables) ─────────────────────────────────────────
-const stagedRef = ref(null)
-const stagedHeaderRef = ref(null)
+const stagedPanelRef = ref(null)
 const commitPanelRef = ref(null)
 const commitHeaderRef = ref(null)
 const filesPanelRef = ref(null)
 const hResizerRef = ref(null)
-
-const { onMouseDown: onStagedResizerMouseDown } = useDragResize({
-  direction: 'vertical',
-  targetRef: stagedRef,
-  handleRef: stagedHeaderRef,
-  minSize: 60,
-})
 
 const { onMouseDown: onCommitResizerMouseDown } = useDragResize({
   direction: 'vertical',
@@ -364,7 +366,6 @@ const { onMouseDown: onHResizerMouseDown } = useDragResize({
 
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
-  document.addEventListener('click', onCtxMenuDocumentClick)
 
   // Fetch status from the real API
   statusStore.fetchStatus()
@@ -374,18 +375,17 @@ onMounted(() => {
 
   // Set staged panel to ~50% of files panel height by default
   nextTick(() => {
-    if (filesPanelRef.value && stagedRef.value) {
+    if (filesPanelRef.value && stagedPanelRef.value?.panelRef) {
       const panelHeight = filesPanelRef.value.offsetHeight
       const halfHeight = Math.max(Math.floor(panelHeight * 0.5), 60)
-      stagedRef.value.style.flex = 'none'
-      stagedRef.value.style.height = halfHeight + 'px'
+      stagedPanelRef.value.panelRef.style.flex = 'none'
+      stagedPanelRef.value.panelRef.style.height = halfHeight + 'px'
     }
   })
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
-  document.removeEventListener('click', onCtxMenuDocumentClick)
 })
 </script>
 
@@ -397,132 +397,46 @@ onUnmounted(() => {
       <div class="changes-view-files" ref="filesPanelRef" style="display: flex; flex-direction: column;">
 
         <!-- === Unstaged Changes === -->
-        <div
-          class="cv-group"
-          id="group-unstaged"
-          ref="unstagedRef"
-          style="flex: 1; display: flex; flex-direction: column; min-height: 60px; overflow: hidden;"
-        >
-          <div class="cv-group-header" @contextmenu.prevent="showUnstagedCtxMenu">
-            <span>Unstaged Changes</span>
-            <span class="cv-group-count">{{ unstagedFiles.length }}</span>
-            <span
-              class="changes-view-btn"
-              style="margin-left: auto; padding: 1px 8px; font-size: 10px;"
-              @click.stop="stageSelected"
-            >Stage</span>
-          </div>
-          <div class="cv-group-body" style="flex: 1; overflow-y: auto;">
-            <template v-for="item in visibleUnstagedItems" :key="item.path">
-              <!-- Directory node -->
-              <div v-if="item.type === 'dir'"
-                class="changes-tree-item"
-                :class="{ 'dir-selected': selectedDir === item.path }"
-                :style="{ paddingLeft: (4 + item.depth * 16) + 'px' }"
-                @click="toggleDir(item.path, 'unstaged')"
-                @contextmenu.prevent.stop="(e) => { selectedDir = item.path; selectedFile = null; showUnstagedCtxMenu(e, { type: 'dir', path: item.path }) }"
-              >
-                <span
-                  class="tree-toggle"
-                  :class="{ expanded: isDirOpen(item.path, 'unstaged') }"
-                >▶</span>
-                <span class="tree-icon tree-icon-folder">📁</span>
-                <span>{{ item.name }}</span>
-              </div>
-              <!-- File node -->
-              <div v-else
-                :class="[
-                  'changes-tree-item',
-                  'changes-file-item',
-                  { selected: selectedFile?.path === item.path }
-                ]"
-                :style="{ paddingLeft: (4 + (item.depth || 0) * 16) + 'px' }"
-                @click="selectFile(item)"
-                @dblclick="onFileDblClick(item, 'unstaged')"
-                @contextmenu.prevent.stop="showUnstagedCtxMenu($event, { type: 'file', path: item.path })"
-              >
-                <span class="tree-toggle" style="visibility:hidden">▶</span>
-                <span :class="['cv-file-status', statusCssMap[item.status]]">
-                  {{ statusLabelMap[item.status] }}
-                </span>
-                <span class="tree-icon tree-icon-file">📄</span>
-                <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.fileName }}</span>
-                <span v-if="item.additions || item.deletions" class="tree-file-stats">
-                  <span v-if="item.additions" class="add">+{{ item.additions }}</span>
-                  <span v-if="item.deletions" class="del">-{{ item.deletions }}</span>
-                </span>
-              </div>
-            </template>
-            <div v-if="visibleUnstagedItems.length === 0" style="padding: 12px; color: #aaa; font-style: italic; font-size: 11px;">
-              No unstaged changes
-            </div>
-          </div>
-        </div>
+        <FileTreePanel
+          title="Unstaged Changes"
+          :files="unstagedFiles"
+          :visibleItems="visibleUnstagedItems"
+          group="unstaged"
+          :selectedFile="selectedFile"
+          :selectedDir="selectedDir"
+          :statusLabelMap="statusLabelMap"
+          :statusCssMap="statusCssMap"
+          :isDirOpen="isDirOpen"
+          :toggleDir="toggleDir"
+          :showContextMenu="true"
+          actionLabel="Stage"
+          emptyText="No unstaged changes"
+          @select-file="selectFile"
+          @dblclick-file="onFileDblClick"
+          @contextmenu="showUnstagedCtxMenu"
+          @stage-selected="stageSelected"
+        />
 
         <!-- === Staged Changes === -->
-        <div
-          class="cv-group"
-          id="group-staged"
-          ref="stagedRef"
-          style="flex: none; min-height: 60px; display: flex; flex-direction: column; overflow: hidden;"
-        >
-          <div
-            class="cv-group-header"
-            ref="stagedHeaderRef"
-            @mousedown="onStagedResizerMouseDown"
-          >
-            <span>Staged Changes</span>
-            <span class="cv-group-count">{{ stagedFiles.length }}</span>
-            <span
-              class="changes-view-btn"
-              style="margin-left: auto; padding: 1px 8px; font-size: 10px;"
-              @click.stop="unstageSelected"
-            >Unstage</span>
-          </div>
-          <div class="cv-group-body" style="flex: 1; overflow-y: auto;">
-            <template v-for="item in visibleStagedItems" :key="item.path">
-              <!-- Directory node -->
-              <div v-if="item.type === 'dir'"
-                class="changes-tree-item"
-                :class="{ 'dir-selected': selectedDir === item.path }"
-                :style="{ paddingLeft: (4 + item.depth * 16) + 'px' }"
-                @click="toggleDir(item.path, 'staged')"
-              >
-                <span
-                  class="tree-toggle"
-                  :class="{ expanded: isDirOpen(item.path, 'staged') }"
-                >▶</span>
-                <span class="tree-icon tree-icon-folder">📁</span>
-                <span>{{ item.name }}</span>
-              </div>
-              <!-- File node -->
-              <div v-else
-                :class="[
-                  'changes-tree-item',
-                  'changes-file-item',
-                  { selected: selectedFile?.path === item.path }
-                ]"
-                :style="{ paddingLeft: (4 + (item.depth || 0) * 16) + 'px' }"
-                @click="selectFile(item)"
-                @dblclick="onFileDblClick(item, 'staged')"
-              >
-                <span class="tree-toggle" style="visibility:hidden">▶</span>
-                <span :class="['cv-file-status', statusCssMap[item.status]]">
-                  {{ statusLabelMap[item.status] }}
-                </span>
-                <span class="tree-icon tree-icon-file">📄</span>
-                <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.fileName }}</span>
-                <span v-if="item.additions || item.deletions" class="tree-file-stats">
-                  <span v-if="item.additions" class="add">+{{ item.additions }}</span>
-                  <span v-if="item.deletions" class="del">-{{ item.deletions }}</span>
-                </span>
-              </div>
-            </template>
-            <div v-if="visibleStagedItems.length === 0" style="padding: 12px; color: #aaa; font-style: italic; font-size: 11px;">
-              No staged changes
-            </div>
-          </div>
-        </div>
+        <FileTreePanel
+          ref="stagedPanelRef"
+          title="Staged Changes"
+          :files="stagedFiles"
+          :visibleItems="visibleStagedItems"
+          group="staged"
+          :selectedFile="selectedFile"
+          :selectedDir="selectedDir"
+          :statusLabelMap="statusLabelMap"
+          :statusCssMap="statusCssMap"
+          :isDirOpen="isDirOpen"
+          :toggleDir="toggleDir"
+          :resizable="true"
+          actionLabel="Unstage"
+          emptyText="No staged changes"
+          @select-file="selectFile"
+          @dblclick-file="onFileDblClick"
+          @unstage-selected="unstageSelected"
+        />
       </div>
 
       <!-- Horizontal Resizer -->
@@ -640,55 +554,23 @@ onUnmounted(() => {
     </Teleport>
 
     <!-- Unstaged Header Context Menu -->
-    <Teleport to="body">
-      <div
-        v-if="unstagedCtxMenu.visible"
-        class="cv-unstaged-context-menu"
-        :style="{ left: unstagedCtxMenu.x + 'px', top: unstagedCtxMenu.y + 'px' }"
-      >
-        <div class="cv-ctx-menu-item" @click="handleDiscardSelected">
-          <span class="cv-ctx-menu-icon">🗑️</span>
-          <span class="cv-ctx-menu-label">{{ discardLabel }}</span>
-          <span class="cv-ctx-menu-shortcut">Delete</span>
-        </div>
-      </div>
-    </Teleport>
+    <ContextMenu
+      :visible="unstagedCtxMenu.visible"
+      :x="unstagedCtxMenu.x"
+      :y="unstagedCtxMenu.y"
+      :items="contextMenuItems"
+      @close="closeUnstagedCtxMenu"
+    />
 
     <!-- Discard Confirmation Dialog -->
-    <Teleport to="body">
-      <div v-if="showDiscardConfirm" class="commit-overlay" @click.self="closeDiscardConfirm">
-        <div class="commit-dialog discard-dialog">
-          <div class="commit-dialog-header">
-            <span>⚠️ Discard Changes</span>
-          </div>
-          <div class="commit-dialog-body">
-            <p style="margin: 0 0 8px; font-size: 13px; color: #333;">
-              Are you sure you want to discard changes?
-            </p>
-            <p style="margin: 0; font-size: 11px; color: #cb2431;">
-              This action is irreversible. Discarded changes cannot be recovered.
-            </p>
-            <div v-if="checkedFiles.size > 0" style="margin-top: 8px; font-size: 11px; color: #666;">
-              Selected files ({{ checkedFiles.size }}):
-              <div v-for="p in checkedFiles" :key="p" style="padding-left: 8px;">• {{ p }}</div>
-            </div>
-            <div v-else style="margin-top: 8px; font-size: 11px; color: #888;">
-              All unstaged changes will be discarded.
-            </div>
-          </div>
-          <div class="commit-dialog-footer">
-            <button class="changes-view-btn" @click="closeDiscardConfirm">Cancel</button>
-            <button
-              class="changes-view-btn danger"
-              :disabled="discarding"
-              @click="handleDiscard"
-            >
-              {{ discarding ? 'Discarding…' : 'Discard' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <DiscardConfirmDialog
+      :visible="showDiscardConfirm"
+      :checkedFiles="checkedFiles"
+      :discardLabel="discardLabel"
+      :discarding="discarding"
+      @confirm="handleDiscard"
+      @close="closeDiscardConfirm"
+    />
   </div>
 </template>
 
@@ -714,10 +596,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.discard-dialog {
-  width: 400px;
 }
 
 .commit-dialog-header {
@@ -809,28 +687,6 @@ onUnmounted(() => {
   padding: 10px 16px;
   border-top: 1px solid #e8e8e8;
   background-color: #fafafa;
-}
-
-/* ── Danger button ────────────────────────────────────────────────── */
-.changes-view-btn.danger {
-  background-color: #cb2431;
-  color: #fff;
-  border-color: #b01e2b;
-}
-
-.changes-view-btn.danger:hover {
-  background-color: #b01e2b;
-}
-
-.changes-view-btn.danger:disabled {
-  background-color: #e8a0a5;
-  cursor: not-allowed;
-}
-
-/* ── Selected directory highlight ──────────────────────────────────── */
-.changes-tree-item.dir-selected {
-  background-color: #e3f2fd;
-  outline: 1px solid #90caf9;
 }
 
 /* ── Inline Commit Panel (below diff) ──────────────────────────────── */
@@ -1024,49 +880,5 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
 }
 
-/* ── Unstaged Header Context Menu ────────────────────────────────── */
-.cv-unstaged-context-menu {
-  position: fixed;
-  z-index: 99999;
-  background: #fff;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  padding: 6px 0;
-  min-width: 200px;
-  font-size: 12px;
-}
 
-.cv-ctx-menu-item {
-  padding: 7px 14px;
-  color: #333;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  transition: background-color 0.1s;
-}
-
-.cv-ctx-menu-item:hover {
-  background-color: #f0f6fc;
-}
-
-.cv-ctx-menu-icon {
-  font-size: 14px;
-  width: 18px;
-  text-align: center;
-}
-
-.cv-ctx-menu-label {
-  flex: 1;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.cv-ctx-menu-shortcut {
-  font-size: 10px;
-  color: #999;
-  margin-left: 12px;
-}
 </style>
