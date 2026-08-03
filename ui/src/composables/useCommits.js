@@ -3,49 +3,7 @@ import { useApi } from './useApi.js'
 import { useUiStore } from '../stores/ui.js'
 import { showToast } from './useToast.js'
 import { routeLanes, getLaneX, getRowGraph as genRowGraph } from '../lib/graph-core.js'
-
-// ─── Parse refs string into structured labels ───────────────
-//  'HEAD -> Tony, origin/Tony' → { local: ['Tony'], remote: ['origin/Tony'] }
-function parseRefs(refsStr) {
-  const labels = { local: [], remote: [], tags: [], stash: [] }
-  if (!refsStr) return labels
-
-  // Parse --decorate=full format:
-  // "HEAD -> refs/heads/main, refs/remotes/origin/main, refs/tags/v1.0"
-  refsStr.split(',').forEach(part => {
-    const name = part.trim()
-    if (!name) return
-
-    // Strip 'HEAD -> ' prefix
-    let clean = name.replace(/^HEAD -> /, '').trim()
-    // Strip 'tag: ' prefix (git --decorate=full format)
-    clean = clean.replace(/^tag:\s*/, '').trim()
-    if (!clean) return
-
-    if (clean.startsWith('refs/remotes/')) {
-      labels.remote.push(clean.replace('refs/remotes/', ''))
-    } else if (clean.startsWith('refs/heads/')) {
-      labels.local.push(clean.replace('refs/heads/', ''))
-    } else if (clean.startsWith('refs/tags/')) {
-      labels.tags.push(clean.replace('refs/tags/', ''))
-    } else if (clean.startsWith('refs/stash')) {
-      labels.stash.push(clean.replace('refs/', ''))
-    } else if (clean.startsWith('origin/')) {
-      labels.remote.push(clean)
-    } else if (/^v?\d+\./.test(clean)) {
-      labels.tags.push(clean)
-    } else if (clean !== 'HEAD') {
-      // Plain branch name (no refs/ prefix)
-      // Could be local or remote
-      if (clean.includes('/')) {
-        labels.remote.push(clean)
-      } else {
-        labels.local.push(clean)
-      }
-    }
-  })
-  return labels
-}
+import { parseRefs } from '../lib/refs-parser.js'
 
 export function useCommits() {
   const uiStore = useUiStore()
