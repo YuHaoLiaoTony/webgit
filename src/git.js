@@ -101,6 +101,87 @@ export function createGitAPI(repoPath) {
     }
   }
 
+  // Validate remote name（與前端 AddRemoteDialog 相同規則，雙層驗證）
+  function validateRemoteName(name) {
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      throw new Error('名稱不可為空');
+    }
+
+    const trimmed = name.trim();
+
+    if (trimmed.length > 255) {
+      throw new Error('名稱過長（最多 255 字元）');
+    }
+
+    // Git remote 命名規則：字母/數字開頭，僅允許 [A-Za-z0-9._-]
+    // （不允許空白或 ~^:?*[\] 等非法字元，避免被解讀為命令選項）
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(trimmed)) {
+      throw new Error('名稱含非法字元');
+    }
+
+    return trimmed;
+  }
+
+  // Validate remote URL（git 可解析的 URL 形式）
+  function validateRemoteUrl(url) {
+    if (typeof url !== 'string' || url.trim().length === 0) {
+      throw new Error('URL 不可為空');
+    }
+
+    const trimmed = url.trim();
+
+    if (trimmed.length > 2048) {
+      throw new Error('URL 過長');
+    }
+
+    const valid =
+      /^(https?|git|ssh|file):\/\//i.test(trimmed) ||   // https://、git://、ssh://、file://
+      /^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+:.+/.test(trimmed) || // scp-like: user@host:path
+      /^\//.test(trimmed);                               // 本機絕對路徑
+
+    if (!valid) {
+      throw new Error('URL 格式無效');
+    }
+
+    return trimmed;
+  }
+
+  // Validate tag name (git check-ref-format rules)
+  function validateTagName(name) {
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      throw new Error('Tag name must be a non-empty string');
+    }
+
+    const trimmed = name.trim();
+
+    // Git tag name restrictions
+    const invalidPatterns = [
+      /^\./,        // Cannot start with a dot
+      /\.\./,      // Cannot contain two consecutive dots
+      /[\x00-\x1f\x7f]/, // No control characters
+      /[ ~^:?*\[\]\\]/, // No space or special characters
+      /@\{/,        // No @{
+      /^@$/,        // Cannot be just @
+      /^\//,        // Cannot start with /
+      /\/\//,      // Cannot contain //
+      /\/$/,        // Cannot end with /
+      /\.lock$/,   // Cannot end with .lock
+      /\.$/,       // Cannot end with a dot
+    ];
+
+    for (const pattern of invalidPatterns) {
+      if (pattern.test(trimmed)) {
+        throw new Error('Invalid tag name format');
+      }
+    }
+
+    if (trimmed.length > 255) {
+      throw new Error('Tag name too long (max 255 characters)');
+    }
+
+    return trimmed;
+  }
+
   return {
     async getStatus() {
       const status = await git.status();
@@ -213,6 +294,18 @@ export function createGitAPI(repoPath) {
       validateBranchName(name);
       await git.deleteLocalBranch(name);
       return { success: true, branch: name };
+    },
+
+    async createTag(name, hash, message = '') {
+      const tagName = validateTagName(name);
+      validateCommitHash(hash);
+
+      // Annotated tag: git tag -a <name> -m <message> <hash>
+      // 若未提供 message，以 tag 名稱作為 message（避免空訊息標註）
+      const msg = String(message || '').trim() || tagName;
+      await git.raw(['tag', '-a', tagName, '-m', msg, hash]);
+
+      return { success: true, tag: tagName, hash };
     },
 
     async getCommitHistory({ limit = 50, skip = 0, order = 'date', firstParent = false, allBranches = true } = {}) {
@@ -470,6 +563,26 @@ export function createGitAPI(repoPath) {
         fetchUrl: remote.refs.fetch,
         pushUrl: remote.refs.push
       }));
+    },
+
+    /**
+     * 新增 remote。
+     * 名稱與 URL 皆為字串參數傳入 simple-git 的 addRemote()（內部會處理引號），
+     * 不拼接 shell 命令，避免注入。
+     */
+    async addRemote({ name, url }) {
+      const remoteName = validateRemoteName(name);
+      const remoteUrl = validateRemoteUrl(url);
+
+      // 重複名稱檢查（前端預檢 + 後端兜底）
+      const existing = await git.getRemotes(true);
+      const duplicate = existing.find(remote => remote.name === remoteName);
+      if (duplicate) {
+        throw new Error(`remote ${remoteName} 已存在`);
+      }
+
+      await git.addRemote(remoteName, remoteUrl);
+      return { success: true, name: remoteName, url: remoteUrl };
     },
 
     async getStashes() {

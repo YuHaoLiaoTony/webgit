@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useUiStore } from '../stores/ui.js'
 import { useStatusStore } from '../stores/status.js'
 import { useReposStore } from '../stores/repos.js'
 import { useApi } from '../composables/useApi.js'
+import { useLongPress } from '../composables/useLongPress.js'
+import AddRemoteDialog from './AddRemoteDialog.vue'
 import { showToast } from '../composables/useToast.js'
 
 const emit = defineEmits(['open-preferences'])
@@ -66,6 +68,95 @@ async function fetchBranches() {
   }
 }
 
+// ─── Remotes ────────────────────────────────────────────────────────
+// Spike 決策 (a)：Remotes 區塊顯示 /api/remotes 的設定 remote 名稱（📡），
+// 點擊可展開顯示該 remote 的 remote-tracking branches（來自 /branches）。
+const remotesData = ref([])
+const loadingRemotes = ref(true)
+const expandedRemote = ref('')
+
+async function fetchRemotes() {
+  try {
+    const { get } = useApi()
+    remotesData.value = await get('/remotes')
+  } catch (e) {
+    console.error('Failed to fetch remotes:', e)
+  } finally {
+    loadingRemotes.value = false
+  }
+}
+
+function remoteBranches(name) {
+  const prefix = `${name}/`
+  return branchesData.remote.filter(rb => rb.startsWith(prefix))
+}
+
+function toggleRemoteExpand(name) {
+  expandedRemote.value = expandedRemote.value === name ? '' : name
+}
+
+// ─── Remotes context menu（右鍵 / 長按）────────────────────────────
+const remotesMenu = ref({ visible: false, x: 0, y: 0 })
+let menuOpenedAt = 0
+
+// 長按 ~500ms 觸發（位移超過閾值視為捲動，不觸發）
+const lp = useLongPress(openRemotesMenu)
+
+function openRemotesMenu(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault()
+  const x = e.touches?.[0]?.clientX ?? e.clientX
+  const y = e.touches?.[0]?.clientY ?? e.clientY
+  remotesMenu.value = { visible: true, x: Math.min(x, window.innerWidth - 208), y }
+  menuOpenedAt = Date.now()
+}
+
+function closeRemotesMenu() {
+  remotesMenu.value.visible = false
+}
+
+function onDocumentClick(e) {
+  if (!remotesMenu.value.visible) return
+  const menu = document.querySelector('.remotes-context-menu')
+  if (menu && !menu.contains(e.target)) {
+    // 長按後瀏覽器合成的 click 會立刻冒泡到 document：300ms 內忽略，避免選單一開即關
+    if (Date.now() - menuOpenedAt < 300) return
+    closeRemotesMenu()
+  }
+}
+
+// ─── Remotes 標題列 click（長按後的合成 click 需抑制）─────────────
+function onRemotesTitleClick() {
+  if (lp.consumeTriggered()) return
+  toggleGroup('remotes')
+}
+
+function onRemoteItemClick(name) {
+  if (lp.consumeTriggered()) return
+  toggleRemoteExpand(name)
+}
+
+function onRemoteBranchClick(branch) {
+  if (lp.consumeTriggered()) return
+  switchToBranch(branch)
+}
+
+// ─── Add Remote Dialog ──────────────────────────────────────────────
+const showAddRemoteDialog = ref(false)
+
+function openAddRemoteDialog() {
+  closeRemotesMenu()
+  showAddRemoteDialog.value = true
+}
+
+function closeAddRemoteDialog() {
+  showAddRemoteDialog.value = false
+}
+
+function onRemoteCreated() {
+  // 新增成功 → 重新載入 remotes，列表立即更新
+  fetchRemotes()
+}
+
 // ─── Stashes ────────────────────────────────────────────────────────
 const stashes = ref([])
 const loadingStashes = ref(true)
@@ -126,14 +217,21 @@ function getStashStatusIcon(status) {
 
 onMounted(() => {
   fetchBranches()
+  fetchRemotes()
   fetchStashes()
   statusStore.fetchStatus()
+  document.addEventListener('click', onDocumentClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick)
 })
 
 // Re-fetch when active repo changes
 watch(() => reposStore.activeRepoId, () => {
   if (reposStore.activeRepoId) {
     fetchBranches()
+    fetchRemotes()
     fetchStashes()
     statusStore.fetchStatus()
   }
@@ -211,20 +309,55 @@ watch(() => reposStore.activeRepoId, () => {
   </template>
 
   <!-- Remotes -->
-  <div class="sidebar-group-title" @click="toggleGroup('remotes')">
+  <div
+    class="sidebar-group-title"
+    @click="onRemotesTitleClick"
+    @contextmenu.prevent="openRemotesMenu"
+    @touchstart.passive="lp.onStart"
+    @touchmove.passive="lp.onMove"
+    @touchend="lp.onEnd"
+    @touchcancel="lp.onEnd"
+  >
     <span>{{ collapsedGroups.remotes ? '▸' : '▾' }} Remotes</span>
   </div>
   <template v-if="!collapsedGroups.remotes">
     <div
-      v-for="remote in branchesData.remote"
-      :key="remote"
-      class="sidebar-item"
-      @click="switchToBranch(remote)"
+      class="sidebar-remotes-group"
+      @contextmenu.prevent="openRemotesMenu"
+      @touchstart.passive="lp.onStart"
+      @touchmove.passive="lp.onMove"
+      @touchend="lp.onEnd"
+      @touchcancel="lp.onEnd"
     >
-      <span>📡 {{ remote }}</span>
-    </div>
-    <div v-if="branchesData.remote.length === 0" class="sidebar-item" style="color: #999;">
-      <span>No remotes</span>
+      <div v-if="loadingRemotes" class="sidebar-item" style="color: #999; font-style: italic;">
+        <span>Loading...</span>
+      </div>
+      <div
+        v-for="remote in remotesData"
+        :key="remote.name"
+        class="sidebar-item sidebar-remote-item"
+        :class="{ 'remote-expanded': expandedRemote === remote.name }"
+        @click="onRemoteItemClick(remote.name)"
+        @contextmenu.prevent.stop="openRemotesMenu"
+      >
+        <span>{{ expandedRemote === remote.name ? '▾' : '▸' }} 📡 {{ remote.name }}</span>
+      </div>
+      <template v-if="expandedRemote">
+        <div
+          v-for="rb in remoteBranches(expandedRemote)"
+          :key="rb"
+          class="sidebar-item sidebar-remote-branch"
+          @click="onRemoteBranchClick(rb)"
+        >
+          <span>🌿 {{ rb }}</span>
+        </div>
+        <div v-if="remoteBranches(expandedRemote).length === 0" class="sidebar-item" style="color: #999;">
+          <span>No branches</span>
+        </div>
+      </template>
+      <div v-if="!loadingRemotes && remotesData.length === 0" class="sidebar-item" style="color: #999;">
+        <span>No remotes</span>
+      </div>
     </div>
   </template>
 
@@ -283,4 +416,76 @@ watch(() => reposStore.activeRepoId, () => {
   <div class="sidebar-group-title" @click="toggleGroup('submodules')">
     <span>{{ collapsedGroups.submodules ? '▸' : '▾' }} Submodules</span>
   </div>
+
+  <!-- Remotes context menu（右鍵 / 長按） -->
+  <div
+    v-if="remotesMenu.visible"
+    class="remotes-context-menu"
+    :style="{ left: remotesMenu.x + 'px', top: remotesMenu.y + 'px' }"
+    @click.stop="openAddRemoteDialog"
+  >
+    <div class="remotes-context-menu-item">
+      <span class="remotes-context-menu-icon">➕</span>
+      <span class="remotes-context-menu-title">Add New Remote</span>
+    </div>
+  </div>
+
+  <!-- Add Remote Dialog -->
+  <AddRemoteDialog
+    :show="showAddRemoteDialog"
+    @close="closeAddRemoteDialog"
+    @created="onRemoteCreated"
+  />
 </template>
+
+<style scoped>
+/* ── Remotes 區塊（Spike (a)：顯示設定的 remote 名稱）───────────── */
+.sidebar-remote-item.remote-expanded {
+  background-color: #e0e8f5;
+  font-weight: 600;
+}
+
+.sidebar-remote-branch {
+  padding-left: 36px;
+  font-size: 12px;
+  color: #555;
+}
+
+/* ── Remotes context menu ───────────────────────────────────────── */
+.remotes-context-menu {
+  position: fixed;
+  z-index: 99999;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 6px 0;
+  min-width: 200px;
+  font-size: 12px;
+  /* 避免選單內的點擊被文字選取/拖曳吃掉（選單只有一個項目，點哪都算選取） */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.remotes-context-menu-item {
+  padding: 7px 14px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  transition: background-color 0.1s;
+}
+
+.remotes-context-menu-item:hover {
+  background-color: #f0f6fc;
+}
+
+.remotes-context-menu-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+</style>

@@ -193,6 +193,17 @@ export async function startServer(options = {}) {
     }
   });
 
+  app.post('/api/tags', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { name, hash, message } = req.body;
+      const result = await gitAPI.createTag(name, hash, message);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
   app.get('/api/commits', async (req, res) => {
     try {
       const gitAPI = getGitAPI(req);
@@ -364,6 +375,18 @@ export async function startServer(options = {}) {
       res.json(remotes);
     } catch (error) {
       res.status(500).json({ error: sanitizeError(error) });
+    }
+  });
+
+  // 新增 remote（名稱/URL 驗證 + 重複檢查由 git.js addRemote 處理）
+  app.post('/api/remotes', csrfProtection, async (req, res) => {
+    try {
+      const gitAPI = getGitAPI(req);
+      const { name, url } = req.body || {};
+      const result = await gitAPI.addRemote({ name, url });
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: sanitizeError(error) });
     }
   });
 
@@ -627,12 +650,24 @@ export async function startServer(options = {}) {
         drives = await listWindowsDrives();
       }
 
-      // Gather subdirectories, flagging git repositories (has a .git entry)
+      // Gather subdirectories, flagging git repositories.
+      // isRepo 定義與 openRepo 一致：該資料夾本身是 repo root，或位於某個 repo 內
+      // （選了會自動定位到 repo root）。
       const dirEntries = entries.filter((e) => e.isDirectory());
+
+      // 先解析 target 本身所屬的 repo root（一次 git 呼叫）
+      let targetToplevel = null;
+      try {
+        const toplevel = await simpleGit(target).revparse(['--show-toplevel']);
+        if (toplevel && toplevel.trim()) targetToplevel = toplevel.trim();
+      } catch (_) {
+        // target 不在任何 repo 內
+      }
+
       const dirs = await Promise.all(
         dirEntries.map(async (entry) => {
           const fullPath = resolve(target, entry.name);
-          const isRepo = await isGitRepoDir(fullPath);
+          const isRepo = await isGitRepoDir(fullPath, targetToplevel);
           return { name: entry.name, path: fullPath, isRepo };
         })
       );
@@ -694,14 +729,23 @@ export async function startServer(options = {}) {
 }
 
 /**
- * Check whether a directory is a git repository (has a .git entry).
+ * Check whether a directory can be opened as a git repository.
+ *
+ * 與 openRepo 的 `rev-parse --show-toplevel` 語義一致：
+ * - 本身有 .git（repo root / worktree / submodule）→ true
+ * - 位於上層 repo 內（parentToplevel 非空）→ true
+ * - 兩者皆無 → false
+ *
+ * @param {string} dirPath 檢查的資料夾
+ * @param {string|null} parentToplevel target 本身所屬的 repo root（null = 不在 repo 內）
  */
-async function isGitRepoDir(dirPath) {
+async function isGitRepoDir(dirPath, parentToplevel) {
   try {
     await access(join(dirPath, '.git'));
     return true;
   } catch {
-    return false;
+    // 沒有自己的 .git → 看是否位於上層 repo 內
+    return parentToplevel !== null;
   }
 }
 

@@ -33,3 +33,4 @@
 | 16 | CLI 啟動與選項 | DevOps | Must | S | [006-config-and-admin.md](./006-config-and-admin.md) |
 | 17 | 安全性防護 | DevOps | Must | S | [006-config-and-admin.md](./006-config-and-admin.md) |
 | 18 | 健康檢查 | DevOps | Should | XS | [006-config-and-admin.md](./006-config-and-admin.md) |
+| 19 | 新增 Remote | Developer | Must | M | [007-add-remote.md](./007-add-remote.md) |

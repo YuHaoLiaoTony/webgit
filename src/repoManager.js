@@ -40,15 +40,16 @@ export function createRepoManager() {
       store = await loadStore();
 
       // 預設 repo 必須寫進清單（使用者決策：清單就是唯一真相）
+      // 先 openRepo（會自動定位 repo root），再以實際 id 寫入，避免子資料夾路徑與 root 不一致
       if (ensureRepoPath) {
         const resolved = resolve(ensureRepoPath);
-        if (!findRepo(store, resolved)) {
-          upsertRepo(store, { path: resolved, name: basename(resolved), status: 'open' });
-          await saveStore(store);
-        }
         // 預設 repo 打不開則維持原本行為：直接失敗（不吞錯誤）
         const info = await this.openRepo(resolved, { persist: false });
         defaultId = info.id;
+        if (!findRepo(store, info.id)) {
+          upsertRepo(store, { path: info.id, name: basename(info.id), status: 'open' });
+          await saveStore(store);
+        }
       }
 
       // 開啟清單中所有 open 狀態的 repo
@@ -57,6 +58,11 @@ export function createRepoManager() {
         try {
           const info = await this.openRepo(entry.path, { persist: false, label: entry.label });
           if (defaultId === null) defaultId = info.id;
+          // 舊資料可能存了 repo 內子資料夾路徑：正規化為 repo root，維持「清單就是唯一真相」
+          if (info.id !== entry.path) {
+            upsertRepo(store, { path: info.id, name: info.name, label: entry.label, status: 'open' });
+            await saveStore(store);
+          }
         } catch (e) {
           console.warn(`[repoManager] 略過無法開啟的 repo ${entry.path}: ${e.message}`);
         }
@@ -76,8 +82,13 @@ export function createRepoManager() {
 
     /**
      * Open (or re-use) a git repository at the given path.
-     * Validates that the path is a valid git directory.
-     * id = 絕對路徑。
+     *
+     * 自動定位 git repo root（同 Fork / SourceGit 行為）：
+     * - 傳入 repo 根目錄 → 直接使用
+     * - 傳入 repo 內部的子資料夾 → 往上找到 repo root 並開啟整個 repo
+     * - 完全不屬於任何 git repo 的資料夾 → 拒絕（Not a valid git repository）
+     *
+     * id = repo root 的絕對路徑。
      */
     async openRepo(path, { persist = true, label = null } = {}) {
       if (typeof path !== 'string' || path.trim().length === 0) {
@@ -90,9 +101,26 @@ export function createRepoManager() {
         throw new Error('Path must be absolute');
       }
 
-      // Check if already opened — deduplicate by resolved path
+      // Locate the enclosing git repository root.
+      // `git rev-parse --show-toplevel` 會往上層尋找：子資料夾 → repo root；
+      // 完全沒有 repo 的純資料夾 → 拋錯（在此 catch）。
+      const git = simpleGit(resolvedPath);
+      let repoRoot = null;
+      try {
+        const toplevel = await git.revparse(['--show-toplevel']);
+        if (toplevel && toplevel.trim()) {
+          repoRoot = resolve(toplevel.trim());
+        }
+      } catch (_) {
+        // not a git repository (or any parent up to the filesystem boundary)
+      }
+      if (!repoRoot) {
+        throw new Error(`Not a valid git repository: ${resolvedPath}`);
+      }
+
+      // Check if already opened — deduplicate by repo root
       for (const [id, repo] of repos) {
-        if (repo.path === resolvedPath) {
+        if (repo.path === repoRoot) {
           // Refresh current branch
           try {
             const branches = await repo.api.getBranches();
@@ -101,7 +129,7 @@ export function createRepoManager() {
             // repository may be empty
           }
           if (persist) {
-            upsertRepo(store, { path: resolvedPath, name: repo.name, label: label ?? repo.label, status: 'open' });
+            upsertRepo(store, { path: repoRoot, name: repo.name, label: label ?? repo.label, status: 'open' });
             await saveStore(store);
           }
           return {
@@ -114,16 +142,9 @@ export function createRepoManager() {
         }
       }
 
-      // Validate it's a git repo
-      const git = simpleGit(resolvedPath);
-      const isRepo = await git.checkIsRepo();
-      if (!isRepo) {
-        throw new Error(`Not a valid git repository: ${resolvedPath}`);
-      }
-
-      const name = basename(resolvedPath);
-      const id = resolvedPath;
-      const api = createGitAPI(resolvedPath);
+      const name = basename(repoRoot);
+      const id = repoRoot;
+      const api = createGitAPI(repoRoot);
 
       let currentBranch = 'unknown';
       try {
@@ -133,18 +154,18 @@ export function createRepoManager() {
         // repository may have no commits yet
       }
 
-      repos.set(id, { api, git, path: resolvedPath, name, currentBranch, label: label || null });
+      repos.set(id, { api, git, path: repoRoot, name, currentBranch, label: label || null });
 
       if (defaultId === null) {
         defaultId = id;
       }
 
       if (persist) {
-        upsertRepo(store, { path: resolvedPath, name, label, status: 'open' });
+        upsertRepo(store, { path: repoRoot, name, label, status: 'open' });
         await saveStore(store);
       }
 
-      return { id, name, path: resolvedPath, currentBranch, label: label || null };
+      return { id, name, path: repoRoot, currentBranch, label: label || null };
     },
 
     /**

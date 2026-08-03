@@ -5,6 +5,7 @@ import { useUiStore } from '../stores/ui.js'
 import { useStatusStore } from '../stores/status.js'
 import { showToast } from '../composables/useToast.js'
 import CheckoutFastForwardDialog from './CheckoutFastForwardDialog.vue'
+import NewTagDialog from './NewTagDialog.vue'
 import { routeLanes, getLaneX, getLaneColor, getRowGraph as renderRowGraph, LANE_COLORS, ROW_H, DOT_Y } from '../lib/graph-core.js'
 
 const uiStore = useUiStore()
@@ -253,6 +254,19 @@ function closePushDialog() {
   pushDialog.value.visible = false
 }
 
+// ── Create Tag ─────────────────────────────────────────────────
+const tagDialog = ref({ visible: false, commit: null })
+
+function openTagDialog(commit) {
+  tagDialog.value = { visible: true, commit }
+  closeContextMenu()
+}
+
+function closeTagDialog() {
+  tagDialog.value.visible = false
+  tagDialog.value.commit = null
+}
+
 async function doPush(mode) {
   if (mode === 'force') {
     const confirmed = confirm(
@@ -341,7 +355,9 @@ function parseRefs(refsStr) {
     if (!name) return
 
     // Strip 'HEAD -> ' prefix
-    const clean = name.replace(/^HEAD -> /, '').trim()
+    let clean = name.replace(/^HEAD -> /, '').trim()
+    // Strip 'tag: ' prefix (git --decorate=full format)
+    clean = clean.replace(/^tag:\s*/, '').trim()
     if (!clean) return
 
     if (clean.startsWith('refs/remotes/')) {
@@ -546,6 +562,17 @@ function parseRefs(refsStr) {
           </span>
         </div>
 
+        <!-- Create Tag (any commit) -->
+        <div
+          class="context-menu-item"
+          @click="openTagDialog(contextMenu.commit)"
+        >
+          <span class="context-menu-icon">🏷️</span>
+          <span class="context-menu-title">
+            Create Tag <strong>{{ contextMenu.commit?.hash }}</strong>
+          </span>
+        </div>
+
         <!-- Reset (not allowed on current HEAD) -->
         <div
           v-if="!isCurrentHeadCommit"
@@ -598,6 +625,14 @@ function parseRefs(refsStr) {
       :remote-branch="checkoutFFDialog.remoteBranch"
       @close="closeCheckoutFFDialog"
       @done="fetchCommits(true)"
+    />
+
+    <!-- Create Tag Dialog -->
+    <NewTagDialog
+      :show="tagDialog.visible"
+      :commit="tagDialog.commit"
+      @close="closeTagDialog"
+      @created="fetchCommits(true)"
     />
   </div>
 </template>

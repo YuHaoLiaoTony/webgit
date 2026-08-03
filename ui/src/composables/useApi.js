@@ -2,6 +2,10 @@
  * API composable — fetches from the actual backend with CSRF protection.
  * Provides { get, post, del } interface used by stores and components.
  * Automatically appends repoId from the repos store when available.
+ *
+ * 注意：repoId 在「每次請求」時才讀取，而非在 useApi() 呼叫當下擷取。
+ * 元件 setup 時 activeRepoId 可能尚未從伺服器載入（fetchRepos 非同步），
+ * 若在 setup 時就固定 repoId，dialog 等長壽命元件會永遠打到 default repo。
  */
 
 import { useReposStore } from '../stores/repos.js'
@@ -27,18 +31,21 @@ async function ensureCsrfToken() {
   return csrfPromise
 }
 
-export function useApi() {
-  // Get active repo ID from the repos store at call time
-  let repoId = null
+/** 讀取目前 active repo id（每次請求時） */
+function currentRepoId() {
   try {
     const reposStore = useReposStore()
-    repoId = reposStore.activeRepoId
+    return reposStore.activeRepoId
   } catch (_) {
     // Store might not be initialized yet (e.g., during startup)
+    return null
   }
+}
 
+export function useApi() {
   return {
     async get(url) {
+      const repoId = currentRepoId()
       const effectiveUrl = repoId
         ? `${url}${url.includes('?') ? '&' : '?'}repoId=${encodeURIComponent(repoId)}`
         : url
@@ -57,6 +64,7 @@ export function useApi() {
     },
 
     async post(url, body) {
+      const repoId = currentRepoId()
       const effectiveBody = repoId ? { ...body, repoId } : body
       const token = await ensureCsrfToken()
       const response = await fetch(`/api${url}`, {
@@ -76,6 +84,7 @@ export function useApi() {
 
     async del(url) {
       // DELETE requests don't need CSRF (repo management endpoints)
+      const repoId = currentRepoId()
       const effectiveUrl = repoId
         ? `${url}${url.includes('?') ? '&' : '?'}repoId=${encodeURIComponent(repoId)}`
         : url
