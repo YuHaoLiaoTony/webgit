@@ -40,7 +40,6 @@ onMounted(() => {
 
 // ─── Context Menu ─────────────────────────────────────────────
 const contextMenu = ref({ visible: false, x: 0, y: 0, commit: null })
-const pushDialog = ref({ visible: false })
 
 // ── Checkout & Fast-Forward Dialog ────────────────────────────
 const checkoutFFDialog = ref({ visible: false, localBranch: '', remoteBranch: '' })
@@ -151,16 +150,6 @@ async function checkoutCommit(commit) {
   }
 }
 
-// ── Push ──────────────────────────────────────────────────────
-function openPushDialog() {
-  pushDialog.value = { visible: true }
-  closeContextMenu()
-}
-
-function closePushDialog() {
-  pushDialog.value.visible = false
-}
-
 // ── Create Tag ─────────────────────────────────────────────────
 const tagDialog = ref({ visible: false, commit: null })
 
@@ -172,33 +161,6 @@ function openTagDialog(commit) {
 function closeTagDialog() {
   tagDialog.value.visible = false
   tagDialog.value.commit = null
-}
-
-async function doPush(mode) {
-  if (mode === 'force') {
-    const confirmed = confirm(
-      `⚠ ⚠ ⚠  FORCE PUSH  ⚠ ⚠ ⚠\n\n` +
-      `Force push ${statusStore.current} to origin?\n` +
-      `This will OVERWRITE remote history!\n\n` +
-      `Are you sure?`
-    )
-    if (!confirmed) return
-  }
-
-  try {
-    const { post } = useApi()
-    const opts = {
-      force: mode === 'force',
-      setUpstream: mode === 'upstream',
-    }
-    await post('/push', opts)
-    showToast('success', `📤 Pushed ${statusStore.current} → origin`)
-    statusStore.fetchStatus()
-  } catch (e) {
-    showToast('error', `❌ Push failed: ${e.message}`)
-  } finally {
-    closePushDialog()
-  }
 }
 
 defineExpose({ selectedCommit, selectCommitByHash })
